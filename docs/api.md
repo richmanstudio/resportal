@@ -1,0 +1,162 @@
+# API
+
+Base URL: `http://localhost:4000/api`
+
+Errors use a stable envelope and keep the top-level `message` field for client compatibility:
+
+```json
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Validation failed",
+    "details": {}
+  },
+  "message": "Validation failed"
+}
+```
+
+## Auth
+
+- `POST /auth/register` creates a user, default organization and returns tokens.
+- `POST /auth/login` returns tokens for an existing user.
+- `POST /auth/refresh` rotates an access token from the refresh cookie or body token.
+- `POST /auth/password-reset/request` accepts `{ "email": "user@example.com" }` and returns a neutral accepted response.
+- `POST /auth/password-reset/confirm` validates reset payload shape. Full token persistence is reserved for the mail-provider integration.
+- `POST /auth/email-verification/request` accepts an optional email and returns a neutral accepted response.
+- `POST /auth/email-verification/confirm` validates verification payload shape. Full token persistence is reserved for the mail-provider integration.
+- `POST /auth/logout` clears the refresh cookie.
+- `GET /auth/me` returns the authenticated user and memberships.
+- `PATCH /auth/me` updates the authenticated user's profile. Body supports `{ "fullName": "Name" }` and avatar upload via `{ "avatarBase64": "...", "avatarMimeType": "image/png" }` for PNG/JPEG/WebP images.
+
+## Onboarding
+
+- `GET /onboarding/summary` returns counts, `demoDataCreated`, and completion flags for first-run setup: clients, cases, deadlines, tasks, documents and events.
+- `POST /onboarding/demo-data` creates a demo client, case, deadline, task, calendar event and optional demo document. Body: `{ "includeDocuments": true }`. Demo data can be created only once per organization; repeated requests return `409`.
+
+## Global Search
+
+- `GET /search?q=<text>` searches cases, clients and documents in the active organization.
+
+## Organizations
+
+- `GET /organizations` returns organizations available to the current user.
+- `POST /organizations` creates a new organization owned by the current user.
+- `GET /organizations/:organizationId/members` returns members for the active organization. `:organizationId` must match `x-organization-id`.
+- `POST /organizations/:organizationId/invite` adds an already registered user to the active organization. `:organizationId` must match `x-organization-id`. If the email is not registered, the API returns `404`.
+- `PATCH /organizations/:organizationId/members/:memberId` updates a member role/status. Owners cannot be changed.
+- `DELETE /organizations/:organizationId/members/:memberId` removes a member from the organization. Owners cannot be removed.
+
+## Clients
+
+Requires `Authorization: Bearer <token>` and `x-organization-id`.
+
+- `GET /clients`
+- `GET /clients?search=<text>&type=<individual|legal_entity|entrepreneur>`
+- `POST /clients`
+- `GET /clients/:id`
+- `PATCH /clients/:id`
+- `DELETE /clients/:id`
+
+## Cases
+
+Requires `Authorization: Bearer <token>` and `x-organization-id`.
+
+- `GET /cases`
+- `GET /cases?search=<text>&status=<draft|active|suspended|finished|archived>`
+- `POST /cases`
+- `GET /cases/:id`
+- `PATCH /cases/:id`
+- `DELETE /cases/:id`
+
+## Case Parties
+
+- `GET /case-parties/case/:caseId`
+- `POST /case-parties/case/:caseId`
+- `PATCH /case-parties/:id`
+- `DELETE /case-parties/:id`
+
+## Deadlines
+
+- `GET /deadlines`
+- `GET /deadlines?due=<overdue|today|week>&status=<active|completed|overdue|cancelled>&caseId=<uuid>`
+- `POST /deadlines`
+- `PATCH /deadlines/:id`
+- `PATCH /deadlines/:id/complete`
+
+## Tasks
+
+- `GET /tasks`
+- `GET /tasks?due=<overdue|today|week>&status=<todo|in_progress|review|done|cancelled>&caseId=<uuid>`
+- `POST /tasks`
+- `PATCH /tasks/:id`
+- `PATCH /tasks/:id/complete`
+
+## Calendar Events
+
+- `GET /events`
+- `POST /events`
+
+## Documents
+
+- `GET /documents`
+- `GET /documents?search=<text>&type=<documentType>&status=<draft|ready|signed|sent|active>&caseId=<uuid>`
+- `POST /documents/upload` accepts JSON with `contentBase64`.
+- `POST /documents/generate` creates a DOCX from a system template.
+- `PATCH /documents/:id` updates document metadata/status. Supported statuses: `draft`, `ready`, `signed`, `sent`. `active` is supported as a legacy status.
+- `GET /documents/:id/download` downloads the stored file.
+
+## Billing
+
+- `GET /billing/plans` returns Free, Solo, Team and Firm plan cards in RUB, including limits, feature lists and the `recommended` marker for Team.
+- `GET /billing/subscription` returns the current organization tariff and limits.
+- `POST /billing/checkout` creates a YooKassa payment and returns a hosted payment URL.
+- `POST /billing/portal` is intentionally not enabled until recurring YooKassa payments are added.
+- `POST /webhooks/yookassa` accepts YooKassa `payment.succeeded` notifications and activates the paid plan for 30 days.
+
+## Members And Roles
+
+Role rules:
+
+- `viewer`: read-only access.
+- `assistant`: can create clients, parties, documents, deadlines, tasks and events.
+- `lawyer`: can create and update cases and generate DOCX.
+- `admin` and `owner`: can invite members and perform destructive operations.
+
+## Audit Log
+
+- `GET /audit-logs?limit=<1..100>&entityType=<type>&entityId=<id>` returns recent audit events for owners/admins.
+
+The API records important actions in `AuditLog`:
+
+- `auth.register`
+- `auth.login`
+- `organization.create`
+- `organization.member.invite`
+- `organization.member.update`
+- `organization.member.delete`
+- `client.create`
+- `client.update`
+- `client.delete`
+- `case.create`
+- `case.update`
+- `case.archive`
+- `case_party.create`
+- `case_party.update`
+- `case_party.delete`
+- `deadline.create`
+- `deadline.update`
+- `deadline.complete`
+- `task.create`
+- `task.update`
+- `task.complete`
+- `document.upload`
+- `document.update`
+- `document.download`
+- `document.generate`
+- `auth.password_reset.request`
+- `auth.email_verification.request`
+- `user.profile.update`
+- `onboarding.demo_data.create`
+- `billing.checkout.create`
+- `billing.webhook.received`
+- `billing.subscription.activate`

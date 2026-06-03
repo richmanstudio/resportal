@@ -1,0 +1,26 @@
+- main [ref=e3]:
+  - generic [ref=e4]:
+    - generic [ref=e5]:
+      - img "РЕСПОРТАЛ" [ref=e6]
+      - generic [ref=e7]:
+        - generic [ref=e8]: РЕСПОРТАЛ
+        - generic [ref=e9]: Единое рабочее пространство юриста
+    - generic [ref=e10]:
+      - heading "Дела, клиенты, документы и сроки в одном месте." [level=1] [ref=e11]
+      - paragraph [ref=e12]: "Стартовый MVP без лишней сложности: роли, организации, судебные дела и контроль процессуальных сроков."
+  - generic [ref=e14]:
+    - img "РЕСПОРТАЛ" [ref=e15]
+    - heading "Вход" [level=2] [ref=e16]
+    - paragraph [ref=e17]: Войдите в рабочее пространство.
+    - generic [ref=e18]:
+      - generic [ref=e19]:
+        - text: Email
+        - textbox "Email" [ref=e20]
+      - generic [ref=e21]:
+        - text: Пароль
+        - textbox "Пароль" [ref=e22]
+      - button "Войти" [ref=e23] [cursor=pointer]
+    - generic [ref=e24]:
+      - text: Нет аккаунта?
+      - link "Зарегистрироваться" [ref=e25] [cursor=pointer]:
+        - /url: /register

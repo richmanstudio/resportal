@@ -1,0 +1,501 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserStatus {
+  active
+  blocked
+}
+
+enum OrganizationType {
+  solo
+  firm
+}
+
+enum TariffPlan {
+  solo
+  team
+  firm
+}
+
+enum TariffStatus {
+  trial
+  active
+  past_due
+  cancelled
+}
+
+enum SubscriptionEventType {
+  checkout_created
+  checkout_completed
+  portal_created
+  webhook_received
+  subscription_updated
+  subscription_cancelled
+}
+
+enum MemberRole {
+  owner
+  admin
+  lawyer
+  assistant
+  viewer
+}
+
+enum MemberStatus {
+  invited
+  active
+  suspended
+}
+
+enum ClientType {
+  individual
+  legal_entity
+  entrepreneur
+}
+
+enum LegalCaseStatus {
+  draft
+  active
+  suspended
+  finished
+  archived
+}
+
+enum CaseSide {
+  plaintiff
+  defendant
+  third_party
+  applicant
+  interested_party
+}
+
+enum CasePartyType {
+  plaintiff
+  defendant
+  third_party
+  court
+  other
+}
+
+enum DocumentType {
+  claim
+  response
+  motion
+  appeal
+  cassation
+  court_act
+  evidence
+  contract
+  other
+}
+
+enum CaseEventType {
+  hearing
+  deadline
+  document_received
+  document_sent
+  payment
+  call
+  meeting
+  other
+}
+
+enum DeadlineStatus {
+  active
+  completed
+  overdue
+  cancelled
+}
+
+enum DeadlinePriority {
+  low
+  medium
+  high
+  critical
+}
+
+enum TaskStatus {
+  todo
+  in_progress
+  review
+  done
+  cancelled
+}
+
+enum TaskPriority {
+  low
+  medium
+  high
+  urgent
+}
+
+enum TemplateScope {
+  system
+  organization
+}
+
+enum PaymentType {
+  income
+  expense
+}
+
+model User {
+  id                String               @id @default(uuid())
+  email             String               @unique
+  passwordHash      String
+  fullName          String
+  phone             String?
+  avatarUrl         String?
+  emailVerifiedAt   DateTime?
+  status            UserStatus           @default(active)
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
+  lastLoginAt       DateTime?
+  ownedOrganizations Organization[]       @relation("OrganizationOwner")
+  memberships       OrganizationMember[]
+  responsibleCases  LegalCase[]          @relation("CaseResponsible")
+  uploadedDocuments CaseDocument[]       @relation("DocumentUploader")
+  createdEvents     CaseEvent[]          @relation("EventCreator")
+  responsibleEvents CaseEvent[]          @relation("EventResponsible")
+  deadlines         Deadline[]           @relation("DeadlineResponsible")
+  assignedTasks     Task[]               @relation("TaskAssignee")
+  createdTasks      Task[]               @relation("TaskCreator")
+  generatedDocuments GeneratedDocument[]  @relation("DocumentGenerator")
+  authTokens        AuthToken[]
+  auditLogs         AuditLog[]
+}
+
+enum AuthTokenType {
+  password_reset
+  email_verification
+}
+
+model AuthToken {
+  id        String        @id @default(uuid())
+  userId    String
+  type      AuthTokenType
+  tokenHash String        @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime      @default(now())
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, type])
+}
+
+model Organization {
+  id              String               @id @default(uuid())
+  name            String
+  type            OrganizationType     @default(solo)
+  inn             String?
+  ogrn            String?
+  address         String?
+  ownerId         String
+  tariffPlan      TariffPlan           @default(solo)
+  tariffStatus    TariffStatus         @default(trial)
+  paymentProvider String?
+  providerCustomerId String?
+  providerSubscriptionId String?
+  tariffCurrentPeriodEnd DateTime?
+  storageLimit    Int                  @default(5120)
+  activeCasesLimit Int                 @default(30)
+  usersLimit      Int                  @default(1)
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+  owner           User                 @relation("OrganizationOwner", fields: [ownerId], references: [id])
+  members         OrganizationMember[]
+  invites         OrganizationInvite[]
+  clients         Client[]
+  cases           LegalCase[]
+  documents       CaseDocument[]
+  events          CaseEvent[]
+  deadlines       Deadline[]
+  tasks           Task[]
+  templates       DocumentTemplate[]
+  generatedDocuments GeneratedDocument[]
+  payments        PaymentRecord[]
+  auditLogs       AuditLog[]
+  subscriptionEvents SubscriptionEvent[]
+}
+
+model OrganizationInvite {
+  id             String       @id @default(uuid())
+  organizationId String
+  email          String
+  fullName       String
+  role           MemberRole   @default(lawyer)
+  tokenHash      String       @unique
+  invitedById    String
+  expiresAt      DateTime
+  acceptedAt     DateTime?
+  createdAt      DateTime     @default(now())
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([email])
+}
+
+model SubscriptionEvent {
+  id             String                @id @default(uuid())
+  organizationId String
+  type           SubscriptionEventType
+  providerEventId  String?
+  providerPaymentId String?
+  providerSubscriptionId String?
+  plan           TariffPlan?
+  metadataJson   Json?
+  createdAt      DateTime              @default(now())
+  organization   Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@unique([providerEventId])
+}
+
+model OrganizationMember {
+  id             String       @id @default(uuid())
+  organizationId String
+  userId         String
+  role           MemberRole   @default(owner)
+  status         MemberStatus @default(active)
+  invitedAt      DateTime?
+  joinedAt       DateTime?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, userId])
+  @@index([userId])
+}
+
+model Client {
+  id                 String          @id @default(uuid())
+  organizationId     String
+  type               ClientType      @default(individual)
+  fullName           String
+  shortName          String?
+  inn                String?
+  ogrn               String?
+  kpp                String?
+  passportData       String?
+  address            String?
+  phone              String?
+  email              String?
+  representativeName String?
+  notes              String?
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+  organization       Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  cases              LegalCase[]
+  documents          CaseDocument[]
+  payments           PaymentRecord[]
+
+  @@index([organizationId])
+}
+
+model LegalCase {
+  id                String          @id @default(uuid())
+  organizationId    String
+  clientId          String
+  title             String
+  caseNumber        String?
+  courtName         String?
+  judgeName         String?
+  category          String?
+  status            LegalCaseStatus @default(draft)
+  side              CaseSide        @default(plaintiff)
+  claimAmount       Decimal?
+  description       String?
+  result            String?
+  responsibleUserId String?
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+  archivedAt        DateTime?
+  organization      Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  client            Client          @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  responsibleUser   User?           @relation("CaseResponsible", fields: [responsibleUserId], references: [id])
+  parties           CaseParty[]
+  documents         CaseDocument[]
+  events            CaseEvent[]
+  deadlines         Deadline[]
+  tasks             Task[]
+  generatedDocuments GeneratedDocument[]
+  payments          PaymentRecord[]
+
+  @@index([organizationId])
+  @@index([clientId])
+}
+
+model CaseParty {
+  id             String        @id @default(uuid())
+  caseId         String
+  type           CasePartyType
+  name           String
+  inn            String?
+  ogrn           String?
+  address        String?
+  representative String?
+  phone          String?
+  email          String?
+  notes          String?
+  case           LegalCase     @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  @@index([caseId])
+}
+
+model CaseDocument {
+  id               String       @id @default(uuid())
+  organizationId   String
+  caseId           String?
+  clientId         String?
+  uploadedById     String
+  title            String
+  type             DocumentType @default(other)
+  fileName         String
+  originalFileName String
+  mimeType         String
+  size             Int
+  storageKey       String
+  version          Int          @default(1)
+  status           String       @default("active")
+  description      String?
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+  organization     Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  case             LegalCase?   @relation(fields: [caseId], references: [id], onDelete: SetNull)
+  client           Client?      @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  uploadedBy       User         @relation("DocumentUploader", fields: [uploadedById], references: [id])
+
+  @@index([organizationId])
+}
+
+model CaseEvent {
+  id                String        @id @default(uuid())
+  organizationId    String
+  caseId            String
+  type              CaseEventType
+  title             String
+  description       String?
+  startAt           DateTime
+  endAt             DateTime?
+  location          String?
+  isAllDay          Boolean       @default(false)
+  createdById       String
+  responsibleUserId String?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  organization      Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  case              LegalCase     @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  createdBy         User          @relation("EventCreator", fields: [createdById], references: [id])
+  responsibleUser   User?         @relation("EventResponsible", fields: [responsibleUserId], references: [id])
+}
+
+model Deadline {
+  id                String           @id @default(uuid())
+  organizationId    String
+  caseId            String
+  title             String
+  description       String?
+  deadlineAt        DateTime
+  status            DeadlineStatus   @default(active)
+  priority          DeadlinePriority @default(medium)
+  responsibleUserId String?
+  basis             String?
+  completedAt       DateTime?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  organization      Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  case              LegalCase        @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  responsibleUser   User?            @relation("DeadlineResponsible", fields: [responsibleUserId], references: [id])
+}
+
+model Task {
+  id             String       @id @default(uuid())
+  organizationId String
+  caseId         String?
+  title          String
+  description    String?
+  status         TaskStatus   @default(todo)
+  priority       TaskPriority @default(medium)
+  assignedToId   String?
+  createdById    String
+  dueAt          DateTime?
+  completedAt    DateTime?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  case           LegalCase?   @relation(fields: [caseId], references: [id], onDelete: SetNull)
+  assignedTo     User?        @relation("TaskAssignee", fields: [assignedToId], references: [id])
+  createdBy      User         @relation("TaskCreator", fields: [createdById], references: [id])
+}
+
+model DocumentTemplate {
+  id              String              @id @default(uuid())
+  organizationId  String?
+  scope           TemplateScope        @default(organization)
+  title           String
+  type            String
+  description     String?
+  templateFileKey String
+  fieldsSchema    Json
+  isActive        Boolean             @default(true)
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  organization    Organization?       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  generatedDocuments GeneratedDocument[]
+}
+
+model GeneratedDocument {
+  id            String           @id @default(uuid())
+  organizationId String
+  caseId        String
+  templateId    String
+  generatedById String
+  title         String
+  inputDataJson Json
+  outputFileKey String
+  createdAt     DateTime         @default(now())
+  organization  Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  case          LegalCase        @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  template      DocumentTemplate @relation(fields: [templateId], references: [id], onDelete: Restrict)
+  generatedBy   User             @relation("DocumentGenerator", fields: [generatedById], references: [id])
+}
+
+model PaymentRecord {
+  id             String       @id @default(uuid())
+  organizationId String
+  clientId       String?
+  caseId         String?
+  type           PaymentType
+  amount         Decimal
+  currency       String       @default("RUB")
+  title          String
+  description    String?
+  paidAt         DateTime
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  client         Client?      @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  case           LegalCase?   @relation(fields: [caseId], references: [id], onDelete: SetNull)
+}
+
+model AuditLog {
+  id             String       @id @default(uuid())
+  organizationId String?
+  userId         String?
+  entityType     String
+  entityId       String?
+  action         String
+  metadataJson   Json?
+  ip             String?
+  userAgent      String?
+  createdAt      DateTime     @default(now())
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  user           User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
+}

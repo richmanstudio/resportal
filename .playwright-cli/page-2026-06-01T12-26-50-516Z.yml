@@ -1,0 +1,124 @@
+- generic [ref=e29]:
+  - complementary [ref=e30]:
+    - generic [ref=e31]:
+      - img [ref=e33]
+      - generic [ref=e37]:
+        - generic [ref=e38]: РЕСПОРТАЛ
+        - generic [ref=e39]: LegalTech для юристов
+    - navigation [ref=e40]:
+      - link "Дашборд" [ref=e41] [cursor=pointer]:
+        - /url: /
+        - img [ref=e42]
+        - text: Дашборд
+      - link "Дела" [ref=e47] [cursor=pointer]:
+        - /url: /cases
+        - img [ref=e48]
+        - text: Дела
+      - link "Клиенты" [ref=e52] [cursor=pointer]:
+        - /url: /clients
+        - img [ref=e53]
+        - text: Клиенты
+      - link "Календарь" [ref=e58] [cursor=pointer]:
+        - /url: /calendar
+        - img [ref=e59]
+        - text: Календарь
+      - link "Задачи" [ref=e61] [cursor=pointer]:
+        - /url: /tasks
+        - img [ref=e62]
+        - text: Задачи
+      - link "Документы" [ref=e65] [cursor=pointer]:
+        - /url: /documents
+        - img [ref=e66]
+        - text: Документы
+      - link "Настройки" [ref=e69] [cursor=pointer]:
+        - /url: /settings
+        - img [ref=e70]
+        - text: Настройки
+    - generic [ref=e73]:
+      - generic [ref=e74]:
+        - generic [ref=e75]: Тариф
+        - generic [ref=e76]: Профессиональный
+        - generic [ref=e77]: Активен до 15.05.2026
+      - generic [ref=e78]:
+        - img [ref=e79]
+        - generic [ref=e86]:
+          - generic [ref=e87]: Поддержка
+          - generic [ref=e88]: help@resportal.ru
+  - generic [ref=e89]:
+    - banner [ref=e90]:
+      - generic [ref=e91]:
+        - button "РЕСПОРТАЛ" [ref=e92] [cursor=pointer]:
+          - img [ref=e93]
+          - text: РЕСПОРТАЛ
+          - img [ref=e97]
+        - generic [ref=e99]:
+          - button "Уведомления" [ref=e100] [cursor=pointer]:
+            - img [ref=e101]
+            - generic [ref=e104]: "3"
+          - generic [ref=e106]:
+            - generic [ref=e107]: Капшук Данила Антонович
+            - generic [ref=e108]: owner
+          - button "КД" [ref=e109] [cursor=pointer]
+    - main [ref=e110]:
+      - generic [ref=e111]:
+        - heading "Дашборд" [level=1] [ref=e112]
+        - generic [ref=e113]:
+          - generic [ref=e114]:
+            - generic [ref=e115]:
+              - img [ref=e117]
+              - generic [ref=e119]:
+                - generic [ref=e120]: Всего дел
+                - generic [ref=e121]: "0"
+            - generic [ref=e122]: в реестре
+          - generic [ref=e123]:
+            - generic [ref=e124]:
+              - img [ref=e126]
+              - generic [ref=e132]:
+                - generic [ref=e133]: В работе
+                - generic [ref=e134]: "0"
+            - generic [ref=e135]: активные
+          - generic [ref=e136]:
+            - generic [ref=e137]:
+              - img [ref=e139]
+              - generic [ref=e142]:
+                - generic [ref=e143]: Сроки
+                - generic [ref=e144]: "0"
+            - generic [ref=e145]: к контролю
+          - generic [ref=e146]:
+            - generic [ref=e147]:
+              - img [ref=e149]
+              - generic [ref=e153]:
+                - generic [ref=e154]: Задачи
+                - generic [ref=e155]: "0"
+            - generic [ref=e156]: не закрыты
+          - generic [ref=e157]:
+            - generic [ref=e158]:
+              - img [ref=e160]
+              - generic [ref=e162]:
+                - generic [ref=e163]: Клиенты
+                - generic [ref=e164]: "0"
+            - generic [ref=e165]: в базе
+        - generic [ref=e166]:
+          - generic [ref=e168]:
+            - heading "Ближайшие события и сроки" [level=2] [ref=e169]
+            - button "Календарь" [ref=e170] [cursor=pointer]
+          - generic [ref=e172]:
+            - heading "Задачи" [level=2] [ref=e173]
+            - button "Все задачи" [ref=e174] [cursor=pointer]
+        - generic [ref=e175]:
+          - generic [ref=e176]:
+            - generic [ref=e177]:
+              - heading "Недавние дела" [level=2] [ref=e178]
+              - button "Все дела" [ref=e179] [cursor=pointer]
+            - table [ref=e181]:
+              - rowgroup [ref=e182]:
+                - row "№ дела Наименование Клиент Статус Обновлено" [ref=e183]:
+                  - columnheader "№ дела" [ref=e184]
+                  - columnheader "Наименование" [ref=e185]
+                  - columnheader "Клиент" [ref=e186]
+                  - columnheader "Статус" [ref=e187]
+                  - columnheader "Обновлено" [ref=e188]
+              - rowgroup
+          - generic [ref=e190]:
+            - heading "Клиенты" [level=2] [ref=e191]
+            - button "Все клиенты" [ref=e192] [cursor=pointer]

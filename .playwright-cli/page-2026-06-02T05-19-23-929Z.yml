@@ -1,0 +1,50 @@
+- main [ref=e3]:
+  - generic [ref=e7]:
+    - generic [ref=e8]:
+      - img "РЕСПОРТАЛ" [ref=e9]
+      - generic [ref=e10]:
+        - generic [ref=e11]: РЕСПОРТАЛ
+        - generic [ref=e12]: Legal OS
+    - generic [ref=e13]:
+      - generic [ref=e14]:
+        - img [ref=e15]
+        - text: LegalTech CRM
+      - heading "Операционная система для юридической практики." [level=1] [ref=e19]
+      - paragraph [ref=e20]: Дела, клиенты, документы, задачи и процессуальные сроки в одном премиальном рабочем пространстве.
+      - generic [ref=e21]:
+        - generic [ref=e22]: Реестр дел
+        - generic [ref=e23]: Контроль сроков
+        - generic [ref=e24]: Документы
+    - generic [ref=e25]:
+      - generic [ref=e26]: Для юристов и команд
+      - generic [ref=e27]: Структурируйте практику так, чтобы каждый рабочий день начинался с ясного списка приоритетов.
+  - generic [ref=e29]:
+    - generic [ref=e30]:
+      - generic [ref=e31]:
+        - generic [ref=e32]:
+          - heading "Войти" [level=2] [ref=e33]
+          - paragraph [ref=e34]: Войдите в рабочее пространство юридической команды.
+        - img [ref=e36]
+      - generic [ref=e39]:
+        - generic [ref=e40]:
+          - text: Email
+          - generic [ref=e41]:
+            - generic:
+              - img
+            - textbox "Email" [ref=e42]
+        - generic [ref=e43]:
+          - text: Пароль
+          - generic [ref=e44]:
+            - generic:
+              - img
+            - textbox "Пароль" [ref=e45]
+        - button "Войти" [ref=e46] [cursor=pointer]:
+          - text: Войти
+          - img [ref=e47]
+      - generic [ref=e49]:
+        - text: Нет аккаунта?
+        - link "Зарегистрироваться" [ref=e50] [cursor=pointer]:
+          - /url: /register
+    - generic [ref=e51]:
+      - img [ref=e52]
+      - text: Доступ защищен. Секреты не хранятся в коде.

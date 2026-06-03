@@ -1,0 +1,24 @@
+{
+  "name": "resportal",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "packages/shared",
+    "packages/ui",
+    "apps/api",
+    "apps/web"
+  ],
+  "scripts": {
+    "dev": "npm run dev -ws",
+    "build": "npm run build -ws",
+    "typecheck": "npm run typecheck -ws",
+    "lint": "npm run lint -ws --if-present",
+    "prisma:generate": "npm --workspace apps/api run prisma:generate",
+    "prisma:migrate": "npm --workspace apps/api run prisma:migrate",
+    "api:dev": "npm --workspace apps/api run dev",
+    "web:dev": "npm --workspace apps/web run dev"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

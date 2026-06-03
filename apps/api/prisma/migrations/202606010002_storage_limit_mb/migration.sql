@@ -1,0 +1,1 @@
+ALTER TABLE "Organization" ALTER COLUMN "storageLimit" SET DEFAULT 5120;
