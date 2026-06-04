@@ -1,8 +1,10 @@
 import bcrypt from "bcryptjs";
-import { Router } from "express";
+import { Router, type CookieOptions } from "express";
+import { createHash, randomBytes } from "node:crypto";
 import {
   emailVerificationRequestSchema,
   emailVerificationSchema,
+  inviteAcceptSchema,
   loginSchema,
   passwordResetRequestSchema,
   passwordResetSchema,
@@ -10,12 +12,46 @@ import {
   userProfileUpdateSchema
 } from "@resportal/shared";
 import { writeAuditLog } from "../../lib/audit";
+import { config } from "../../lib/config";
+import { sendEmail } from "../../lib/email";
 import { HttpError, parseBody } from "../../lib/http";
 import { prisma } from "../../lib/prisma";
 import { requireAuth } from "../../middleware/auth";
 import { signAccessToken, signRefreshToken, verifyRefreshToken } from "./tokens";
 
 export const authRouter = Router();
+
+const refreshCookieOptions: CookieOptions = {
+  httpOnly: true,
+  sameSite: "lax",
+  secure: config.authCookieSecure,
+  maxAge: 30 * 24 * 60 * 60 * 1000
+};
+
+function createRawToken() {
+  return randomBytes(32).toString("base64url");
+}
+
+function hashToken(token: string) {
+  return createHash("sha256").update(token).digest("hex");
+}
+
+function tokenUrl(path: string, token: string) {
+  return `${config.appPublicUrl}${path}?token=${encodeURIComponent(token)}`;
+}
+
+async function createAuthToken(userId: string, type: "password_reset" | "email_verification", ttlMinutes: number) {
+  const rawToken = createRawToken();
+  await prisma.authToken.create({
+    data: {
+      userId,
+      type,
+      tokenHash: hashToken(rawToken),
+      expiresAt: new Date(Date.now() + ttlMinutes * 60_000)
+    }
+  });
+  return rawToken;
+}
 
 authRouter.post("/register", async (req, res, next) => {
   try {
@@ -73,11 +109,7 @@ authRouter.post("/register", async (req, res, next) => {
     const accessToken = signAccessToken(result.user);
     const refreshToken = signRefreshToken(result.user);
 
-    res.cookie("refreshToken", refreshToken, {
-      httpOnly: true,
-      sameSite: "lax",
-      secure: process.env.NODE_ENV === "production"
-    });
+    res.cookie("refreshToken", refreshToken, refreshCookieOptions);
 
     res.status(201).json({
       accessToken,
@@ -120,11 +152,7 @@ authRouter.post("/login", async (req, res, next) => {
     const accessToken = signAccessToken(user);
     const refreshToken = signRefreshToken(user);
 
-    res.cookie("refreshToken", refreshToken, {
-      httpOnly: true,
-      sameSite: "lax",
-      secure: process.env.NODE_ENV === "production"
-    });
+    res.cookie("refreshToken", refreshToken, refreshCookieOptions);
 
     res.json({
       accessToken,
@@ -167,6 +195,16 @@ authRouter.post("/password-reset/request", async (req, res, next) => {
     const input = parseBody(passwordResetRequestSchema, req.body);
     const user = await prisma.user.findUnique({ where: { email: input.email } });
 
+    if (user) {
+      const token = await createAuthToken(user.id, "password_reset", 60);
+      const url = tokenUrl("/password-reset", token);
+      await sendEmail({
+        to: user.email,
+        subject: "Восстановление пароля в РЕСПОРТАЛЕ",
+        text: `Для восстановления пароля откройте ссылку: ${url}\n\nСсылка действует 60 минут.`
+      });
+    }
+
     await writeAuditLog({
       req,
       userId: user?.id,
@@ -186,10 +224,37 @@ authRouter.post("/password-reset/request", async (req, res, next) => {
 
 authRouter.post("/password-reset/confirm", async (req, res, next) => {
   try {
-    parseBody(passwordResetSchema, req.body);
-    res.status(501).json({
-      message: "Восстановление пароля ожидает подключения почтового провайдера и таблицы reset-токенов."
+    const input = parseBody(passwordResetSchema, req.body);
+    const tokenHash = hashToken(input.token);
+    const token = await prisma.authToken.findUnique({
+      where: { tokenHash },
+      include: { user: true }
     });
+
+    if (!token || token.type !== "password_reset" || token.usedAt || token.expiresAt < new Date()) {
+      throw new HttpError(400, "Ссылка восстановления пароля недействительна или устарела.");
+    }
+
+    await prisma.$transaction([
+      prisma.user.update({
+        where: { id: token.userId },
+        data: { passwordHash: await bcrypt.hash(input.password, 12) }
+      }),
+      prisma.authToken.update({
+        where: { id: token.id },
+        data: { usedAt: new Date() }
+      })
+    ]);
+
+    await writeAuditLog({
+      req,
+      userId: token.userId,
+      entityType: "User",
+      entityId: token.userId,
+      action: "auth.password_reset.confirm"
+    });
+
+    res.json({ status: "ok", message: "Пароль обновлен. Теперь можно войти с новым паролем." });
   } catch (error) {
     next(error);
   }
@@ -199,6 +264,16 @@ authRouter.post("/email-verification/request", async (req, res, next) => {
   try {
     const input = parseBody(emailVerificationRequestSchema, req.body ?? {});
     const user = input.email ? await prisma.user.findUnique({ where: { email: input.email } }) : null;
+
+    if (user && !user.emailVerifiedAt) {
+      const token = await createAuthToken(user.id, "email_verification", 24 * 60);
+      const url = tokenUrl("/email-verification", token);
+      await sendEmail({
+        to: user.email,
+        subject: "Подтверждение email в РЕСПОРТАЛЕ",
+        text: `Подтвердите email по ссылке: ${url}\n\nСсылка действует 24 часа.`
+      });
+    }
 
     await writeAuditLog({
       req,
@@ -219,9 +294,125 @@ authRouter.post("/email-verification/request", async (req, res, next) => {
 
 authRouter.post("/email-verification/confirm", async (req, res, next) => {
   try {
-    parseBody(emailVerificationSchema, req.body);
-    res.status(501).json({
-      message: "Подтверждение email ожидает подключения почтового провайдера и таблицы verification-токенов."
+    const input = parseBody(emailVerificationSchema, req.body);
+    const tokenHash = hashToken(input.token);
+    const token = await prisma.authToken.findUnique({
+      where: { tokenHash }
+    });
+
+    if (!token || token.type !== "email_verification" || token.usedAt || token.expiresAt < new Date()) {
+      throw new HttpError(400, "Ссылка подтверждения email недействительна или устарела.");
+    }
+
+    await prisma.$transaction([
+      prisma.user.update({
+        where: { id: token.userId },
+        data: { emailVerifiedAt: new Date() }
+      }),
+      prisma.authToken.update({
+        where: { id: token.id },
+        data: { usedAt: new Date() }
+      })
+    ]);
+
+    await writeAuditLog({
+      req,
+      userId: token.userId,
+      entityType: "User",
+      entityId: token.userId,
+      action: "auth.email_verification.confirm"
+    });
+
+    res.json({ status: "ok", message: "Email подтвержден." });
+  } catch (error) {
+    next(error);
+  }
+});
+
+authRouter.post("/invites/accept", async (req, res, next) => {
+  try {
+    const input = parseBody(inviteAcceptSchema, req.body);
+    const tokenHash = hashToken(input.token);
+    const invite = await prisma.organizationInvite.findUnique({
+      where: { tokenHash },
+      include: { organization: true }
+    });
+
+    if (!invite || invite.acceptedAt || invite.expiresAt < new Date()) {
+      throw new HttpError(400, "Приглашение недействительно или устарело.");
+    }
+
+    const existingUser = await prisma.user.findUnique({ where: { email: invite.email } });
+    if (!existingUser && !input.password) {
+      throw new HttpError(400, "Для первого входа по приглашению задайте пароль.");
+    }
+
+    const result = await prisma.$transaction(async (tx) => {
+      const user = existingUser ?? await tx.user.create({
+        data: {
+          email: invite.email,
+          fullName: invite.fullName,
+          passwordHash: await bcrypt.hash(input.password!, 12),
+          emailVerifiedAt: new Date(),
+          lastLoginAt: new Date()
+        }
+      });
+
+      const member = await tx.organizationMember.upsert({
+        where: {
+          organizationId_userId: {
+            organizationId: invite.organizationId,
+            userId: user.id
+          }
+        },
+        update: {
+          role: invite.role,
+          status: "active",
+          joinedAt: new Date()
+        },
+        create: {
+          organizationId: invite.organizationId,
+          userId: user.id,
+          role: invite.role,
+          status: "active",
+          invitedAt: invite.createdAt,
+          joinedAt: new Date()
+        }
+      });
+
+      await tx.organizationInvite.update({
+        where: { id: invite.id },
+        data: { acceptedAt: new Date() }
+      });
+
+      return { user, member };
+    });
+
+    await writeAuditLog({
+      req,
+      organizationId: invite.organizationId,
+      userId: result.user.id,
+      entityType: "OrganizationMember",
+      entityId: result.member.id,
+      action: "organization.member.invite.accept",
+      metadata: { role: result.member.role }
+    });
+
+    const accessToken = signAccessToken(result.user);
+    const refreshToken = signRefreshToken(result.user);
+
+    res.cookie("refreshToken", refreshToken, refreshCookieOptions);
+
+    res.json({
+      accessToken,
+      refreshToken,
+      organization: invite.organization,
+      user: {
+        id: result.user.id,
+        email: result.user.email,
+        fullName: result.user.fullName,
+        avatarUrl: result.user.avatarUrl
+      }
     });
   } catch (error) {
     next(error);

@@ -8,6 +8,8 @@ build
 .env.local
 .DS_Store
 *.log
+*.pem
+*.ppk
 api.*.log
 coverage
 storage

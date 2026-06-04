@@ -1,0 +1,15 @@
+node_modules
+**/node_modules
+dist
+**/dist
+build
+coverage
+.git
+.env
+.env.local
+*.log
+*.pem
+*.ppk
+storage
+api.*.log
+apps/web/.vite

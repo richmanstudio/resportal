@@ -26,7 +26,7 @@ billingWebhookRouter.post("/yookassa", async (req, res, next) => {
 
     if (!organizationId || !plan) throw new HttpError(400, "Payment metadata is incomplete");
 
-    await prisma.subscriptionEvent.create({
+    const webhookEvent = await prisma.subscriptionEvent.create({
       data: {
         organizationId,
         type: "webhook_received",
@@ -39,6 +39,11 @@ billingWebhookRouter.post("/yookassa", async (req, res, next) => {
       if (error && typeof error === "object" && "code" in error && error.code === "P2002") return null;
       throw error;
     });
+
+    if (!webhookEvent) {
+      res.json({ received: true, duplicate: true });
+      return;
+    }
 
     await writeAuditLog({
       organizationId,

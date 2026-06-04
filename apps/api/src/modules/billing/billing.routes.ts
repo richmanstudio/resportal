@@ -203,7 +203,13 @@ export async function fetchYooKassaPayment(paymentId: string): Promise<YooKassaP
 
 export async function activatePaidPlan(organizationId: string, plan: TariffPlan, providerPaymentId: string) {
   const limits = limitsForPlan(plan);
-  const currentPeriodEnd = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+  const organization = await prisma.organization.findUnique({ where: { id: organizationId } });
+  if (!organization) throw new HttpError(404, "Organization not found");
+
+  const periodStart = organization.tariffCurrentPeriodEnd && organization.tariffCurrentPeriodEnd > new Date()
+    ? organization.tariffCurrentPeriodEnd
+    : new Date();
+  const currentPeriodEnd = new Date(periodStart.getTime() + 30 * 24 * 60 * 60 * 1000);
   await prisma.organization.update({
     where: { id: organizationId },
     data: {

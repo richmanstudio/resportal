@@ -71,7 +71,32 @@ clientsRouter.get("/:id", async (req, res, next) => {
     const id = req.params.id as string;
     const client = await prisma.client.findFirst({
       where: { id, organizationId: req.organizationId },
-      include: { cases: true }
+      include: {
+        cases: {
+          orderBy: { updatedAt: "desc" },
+          select: {
+            id: true,
+            title: true,
+            caseNumber: true,
+            courtName: true,
+            status: true,
+            updatedAt: true
+          }
+        },
+        documents: {
+          orderBy: { createdAt: "desc" },
+          select: {
+            id: true,
+            title: true,
+            type: true,
+            status: true,
+            originalFileName: true,
+            size: true,
+            createdAt: true,
+            case: { select: { id: true, title: true, caseNumber: true } }
+          }
+        }
+      }
     });
 
     if (!client) notFound("Client not found");

@@ -24,7 +24,7 @@ import { Children, useEffect, useState } from "react";
 import { Link, Navigate, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { apiFetch, clearSession, fileToBase64, loadWorkspace, type Workspace } from "../lib/api";
 import { Badge, cx } from "./Premium";
-import logoUrl from "../../logo.png";
+import logoUrl from "../assets/logo-app.png";
 
 type NavItem = {
   to: string;
@@ -101,7 +101,8 @@ function initials(fullName: string) {
 }
 
 function isPaidOrganization(organization: Workspace["membership"]["organization"]) {
-  return organization.tariffStatus === "active" && Boolean(organization.tariffCurrentPeriodEnd);
+  const currentPeriodEnd = organization.tariffCurrentPeriodEnd;
+  return organization.tariffStatus === "active" && currentPeriodEnd ? new Date(currentPeriodEnd) > new Date() : false;
 }
 
 function planTitle(organization: Workspace["membership"]["organization"]) {
@@ -113,6 +114,14 @@ function planDescription(organization: Workspace["membership"]["organization"]) 
   return organization.tariffCurrentPeriodEnd
     ? `Активна до ${new Date(organization.tariffCurrentPeriodEnd).toLocaleDateString("ru-RU")}`
     : "Активная подписка";
+}
+
+function dismissedNotificationsKey(workspace: Workspace) {
+  return `resportal.dismissedNotifications.v1.${workspace.user.id}.${workspace.organizationId}`;
+}
+
+function notificationFingerprint(item: NotificationItem) {
+  return `${item.kind}:${item.id}:${item.date ?? "none"}`;
 }
 
 export function AppShell() {
@@ -129,6 +138,7 @@ export function AppShell() {
   const [isMoreOpen, setIsMoreOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [dismissedNotifications, setDismissedNotifications] = useState<string[]>([]);
   const [onboardingStep, setOnboardingStep] = useState(0);
   const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
   const [profileMessage, setProfileMessage] = useState("");
@@ -177,6 +187,12 @@ export function AppShell() {
 
   useEffect(() => {
     if (!workspace || status !== "ready") return;
+    const raw = localStorage.getItem(dismissedNotificationsKey(workspace));
+    setDismissedNotifications(raw ? JSON.parse(raw) as string[] : []);
+  }, [status, workspace?.user.id, workspace?.organizationId]);
+
+  useEffect(() => {
+    if (!workspace || status !== "ready") return;
     void Promise.all([
       apiFetch<NotificationDeadlineResponse[]>("/deadlines?due=week", { organizationId: workspace.organizationId }).catch(() => []),
       apiFetch<NotificationTaskResponse[]>("/tasks?due=week", { organizationId: workspace.organizationId }).catch(() => [])
@@ -189,9 +205,28 @@ export function AppShell() {
           .filter((item) => item.status !== "done" && item.status !== "cancelled")
           .map((item) => ({ id: item.id, title: item.title, date: item.dueAt, kind: "task" as const, case: item.case }))
       ].sort((a, b) => new Date(a.date ?? 0).getTime() - new Date(b.date ?? 0).getTime());
-      setNotifications(next.slice(0, 8));
+      const dismissed = new Set<string>(JSON.parse(localStorage.getItem(dismissedNotificationsKey(workspace)) ?? "[]") as string[]);
+      setNotifications(next.filter((item) => !dismissed.has(notificationFingerprint(item))).slice(0, 8));
     });
   }, [status, workspace]);
+
+  function clearNotifications() {
+    if (!workspace) return;
+    const next = Array.from(new Set([...dismissedNotifications, ...notifications.map(notificationFingerprint)]));
+    localStorage.setItem(dismissedNotificationsKey(workspace), JSON.stringify(next));
+    setDismissedNotifications(next);
+    setNotifications([]);
+    setIsNotificationsOpen(false);
+  }
+
+  function dismissNotification(item: NotificationItem) {
+    if (!workspace) return;
+    const fingerprint = notificationFingerprint(item);
+    const next = Array.from(new Set([...dismissedNotifications, fingerprint]));
+    localStorage.setItem(dismissedNotificationsKey(workspace), JSON.stringify(next));
+    setDismissedNotifications(next);
+    setNotifications((current) => current.filter((notification) => notificationFingerprint(notification) !== fingerprint));
+  }
 
   if (status === "loading") {
     return <div className="flex min-h-screen items-center justify-center bg-porcelain text-sm font-semibold text-slate-600">Загружаем рабочее пространство...</div>;
@@ -392,7 +427,7 @@ export function AppShell() {
                     </SearchGroup>
                     <SearchGroup title="Клиенты" empty="Клиенты не найдены">
                       {searchResult.clients.map((item) => (
-                        <SearchLink key={item.id} to="/clients" title={item.fullName} meta={item.email ?? item.phone ?? item.type} onClick={() => setIsSearchOpen(false)}>
+                        <SearchLink key={item.id} to={`/clients/${item.id}`} title={item.fullName} meta={item.email ?? item.phone ?? item.type} onClick={() => setIsSearchOpen(false)}>
                           <Badge tone="violet">{item.type}</Badge>
                         </SearchLink>
                       ))}
@@ -419,11 +454,19 @@ export function AppShell() {
                   <div className="absolute right-0 top-12 z-40 w-[380px] rounded-[22px] border border-slate-200 bg-white p-3 shadow-[0_24px_70px_rgba(15,23,42,0.2)]">
                     <div className="flex items-center justify-between px-2 pb-2">
                       <div className="text-sm font-semibold text-slate-950">Что требует внимания</div>
-                      <Badge tone={notifications.length ? "red" : "green"}>{notifications.length ? `${notifications.length}` : "0"}</Badge>
+                      <div className="flex items-center gap-2">
+                        {notifications.length ? (
+                          <button className="rounded-full px-3 py-1 text-xs font-semibold text-slate-500 transition hover:bg-slate-100 hover:text-slate-900" onClick={clearNotifications}>
+                            Очистить
+                          </button>
+                        ) : null}
+                        <Badge tone={notifications.length ? "red" : "green"}>{notifications.length ? `${notifications.length}` : "0"}</Badge>
+                      </div>
                     </div>
                     <div className="max-h-80 overflow-y-auto">
                       {notifications.length ? notifications.map((item) => (
-                        <Link key={`${item.kind}-${item.id}`} to="/tasks" className="block rounded-2xl px-3 py-3 transition hover:bg-slate-50" onClick={() => setIsNotificationsOpen(false)}>
+                        <div key={`${item.kind}-${item.id}`} className="group relative rounded-2xl transition hover:bg-slate-50">
+                        <Link to="/tasks" className="block px-3 py-3 pr-10" onClick={() => setIsNotificationsOpen(false)}>
                           <div className="flex items-start justify-between gap-3">
                             <div>
                               <div className="text-sm font-semibold text-slate-950">{item.title}</div>
@@ -432,6 +475,14 @@ export function AppShell() {
                             <Badge tone={item.kind === "deadline" ? "orange" : "rose"}>{item.date ? new Date(item.date).toLocaleDateString("ru-RU") : "без даты"}</Badge>
                           </div>
                         </Link>
+                          <button
+                            className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-xl text-slate-300 opacity-0 transition hover:bg-white hover:text-slate-700 group-hover:opacity-100"
+                            onClick={() => dismissNotification(item)}
+                            aria-label="Скрыть уведомление"
+                          >
+                            <X size={15} />
+                          </button>
+                        </div>
                       )) : (
                         <div className="rounded-2xl bg-emerald-50 px-4 py-5 text-sm font-semibold leading-6 text-emerald-700">Срочных задач и сроков на ближайшие 7 дней нет.</div>
                       )}

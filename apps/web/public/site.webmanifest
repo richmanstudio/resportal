@@ -1,0 +1,24 @@
+{
+  "name": "РЕСПОРТАЛ",
+  "short_name": "РЕСПОРТАЛ",
+  "description": "CRM для юристов: дела, сроки, клиенты, документы и задачи.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#eef2f6",
+  "theme_color": "#0b2744",
+  "lang": "ru-RU",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/favicon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

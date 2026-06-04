@@ -4,7 +4,8 @@ import { randomUUID } from "node:crypto";
 import fs from "node:fs/promises";
 import { writeAuditLog } from "../../lib/audit";
 import { createDocxBuffer } from "../../lib/docx";
-import { notFound, parseBody } from "../../lib/http";
+import { config } from "../../lib/config";
+import { HttpError, notFound, parseBody } from "../../lib/http";
 import { prisma } from "../../lib/prisma";
 import { resolveStorageKey, saveBase64File } from "../../lib/storage";
 import { requireAuth } from "../../middleware/auth";
@@ -15,6 +16,29 @@ import { assertStorageCapacity, requireActiveTariff } from "../../middleware/tar
 export const documentsRouter = Router();
 
 documentsRouter.use(requireAuth, requireOrganization);
+
+const allowedMimeTypes = new Set([
+  "application/pdf",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "application/vnd.ms-excel",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "text/plain"
+]);
+
+function assertSafeUpload(mimeType: string, sizeBytes: number) {
+  if (!allowedMimeTypes.has(mimeType)) {
+    throw new HttpError(415, "Этот тип файла не разрешен. Загрузите PDF, DOC/DOCX, XLS/XLSX, изображение или текстовый файл.");
+  }
+
+  const maxBytes = config.documentMaxUploadMb * 1024 * 1024;
+  if (sizeBytes > maxBytes) {
+    throw new HttpError(413, `Файл слишком большой. Максимальный размер: ${config.documentMaxUploadMb} МБ.`);
+  }
+}
 
 documentsRouter.get("/", async (req, res, next) => {
   try {
@@ -65,6 +89,7 @@ documentsRouter.post("/upload", requireActiveTariff, requireAtLeastRole("assista
     }
 
     const uploadBytes = Buffer.byteLength(input.contentBase64, "base64");
+    assertSafeUpload(input.mimeType, uploadBytes);
     await assertStorageCapacity(req.organizationId!, uploadBytes);
     const saved = await saveBase64File(req.organizationId!, input.originalFileName, input.contentBase64);
     const document = await prisma.caseDocument.create({
@@ -137,6 +162,29 @@ documentsRouter.patch("/:id", requireAtLeastRole("assistant"), async (req, res, 
   }
 });
 
+documentsRouter.delete("/:id", requireAtLeastRole("admin"), async (req, res, next) => {
+  try {
+    const id = req.params.id as string;
+    const document = await prisma.caseDocument.findFirst({ where: { id, organizationId: req.organizationId } });
+    if (!document) notFound("Document not found");
+
+    await prisma.caseDocument.delete({ where: { id: document.id } });
+    await fs.unlink(resolveStorageKey(document.storageKey)).catch(() => undefined);
+
+    await writeAuditLog({
+      req,
+      entityType: "CaseDocument",
+      entityId: document.id,
+      action: "document.delete",
+      metadata: { caseId: document.caseId, clientId: document.clientId, size: document.size }
+    });
+
+    res.status(204).send();
+  } catch (error) {
+    next(error);
+  }
+});
+
 documentsRouter.get("/:id/download", async (req, res, next) => {
   try {
     const document = await prisma.caseDocument.findFirst({ where: { id: req.params.id, organizationId: req.organizationId } });
@@ -172,22 +220,42 @@ documentsRouter.post("/generate", requireActiveTariff, requireAtLeastRole("lawye
       pretrial_claim: "Претензия"
     }[input.templateType];
 
+    const courtParty = legalCase.parties.find((party) => party.type === "court");
+    const opponents = legalCase.parties
+      .filter((party) => party.type !== "court")
+      .map((party) => `${party.name}${party.representative ? `, представитель: ${party.representative}` : ""}`)
+      .join("; ");
+    const recipient = inputData.recipient ?? courtParty?.name ?? legalCase.courtName ?? "Адресат не указан";
+    const applicant = inputData.applicant ?? legalCase.client.fullName;
+    const templateBody = {
+      postpone_hearing: `Прошу отложить судебное заседание по делу ${legalCase.caseNumber ?? legalCase.title}. Причина: ${inputData.reason ?? "требуется дополнительное время для подготовки позиции и представления документов"}.`,
+      attach_documents: `Прошу приобщить к материалам дела документы, указанные в приложении, поскольку они имеют значение для правильного рассмотрения спора.`,
+      case_review: `Прошу предоставить возможность ознакомиться с материалами дела ${legalCase.caseNumber ?? legalCase.title}, включая изготовление копий и фотосъемку материалов.`,
+      claim_response: `С заявленными требованиями не согласны по следующим основаниям: ${inputData.position ?? "доводы истца требуют проверки и документального подтверждения"}.`,
+      pretrial_claim: `Предлагаем добровольно урегулировать спор и исполнить требования заявителя в срок ${inputData.responseTerm ?? "10 календарных дней"} с даты получения настоящей претензии.`
+    }[input.templateType];
     const lines = [
       templateTitle,
       "",
-      `Дело: ${legalCase.caseNumber ?? legalCase.title}`,
-      `Суд: ${legalCase.courtName ?? "не указан"}`,
-      `Клиент: ${legalCase.client.fullName}`,
+      `В: ${recipient}`,
+      `От: ${applicant}`,
+      legalCase.client.address ? `Адрес: ${legalCase.client.address}` : "",
+      legalCase.client.inn ? `ИНН: ${legalCase.client.inn}` : "",
+      "",
+      `Дело: ${legalCase.caseNumber ?? "б/н"} (${legalCase.title})`,
+      `Суд: ${legalCase.courtName ?? courtParty?.name ?? "не указан"}`,
+      legalCase.judgeName ? `Судья: ${legalCase.judgeName}` : "",
+      opponents ? `Участники: ${opponents}` : "",
       `Дата: ${new Date().toLocaleDateString("ru-RU")}`,
       "",
-      inputData.recipient ? `Адресат: ${inputData.recipient}` : "",
-      inputData.body ?? "Прошу суд рассмотреть настоящее заявление и приобщить его к материалам дела.",
+      inputData.body ?? templateBody,
       "",
       "Приложения:",
       inputData.attachments ?? "1. Документы по тексту заявления.",
       "",
+      `Представитель: ${inputData.representative ?? legalCase.client.representativeName ?? "__________________"}`,
       "Подпись: __________________"
-    ].filter((line) => line !== undefined);
+    ].filter((line) => line !== undefined && line !== "");
 
     const buffer = createDocxBuffer(lines);
     await assertStorageCapacity(req.organizationId!, buffer.byteLength);
@@ -225,7 +293,7 @@ documentsRouter.post("/generate", requireActiveTariff, requireAtLeastRole("lawye
         caseId: input.caseId,
         uploadedById: req.user!.id,
         title: input.title,
-        type: "motion",
+        type: input.templateType === "claim_response" ? "response" : input.templateType === "pretrial_claim" ? "claim" : "motion",
         fileName: saved.fileName,
         originalFileName: fileName,
         mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",

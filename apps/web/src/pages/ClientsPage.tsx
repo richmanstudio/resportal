@@ -2,6 +2,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Building2, Edit3, Filter, Plus, Search, Trash2, User, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
+import { Link } from "react-router-dom";
 import { z } from "zod";
 import { clientCreateSchema } from "@resportal/shared";
 import { Panel } from "../components/Panel";
@@ -266,11 +267,11 @@ export function ClientsPage() {
                   <div key={client.id} className="rounded-[18px] border border-slate-200 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-lift">
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex items-start gap-3">
-                        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-violet-50 text-sm font-bold text-violet-700 ring-1 ring-violet-100">
+                        <Link to={`/clients/${client.id}`} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-violet-50 text-sm font-bold text-violet-700 ring-1 ring-violet-100 transition hover:bg-violet-100">
                           {client.fullName.slice(0, 2).toUpperCase()}
-                        </div>
+                        </Link>
                         <div>
-                          <div className="font-semibold text-slate-950">{client.fullName}</div>
+                          <Link to={`/clients/${client.id}`} className="font-semibold text-slate-950 transition hover:text-blue-700">{client.fullName}</Link>
                           <div className="mt-1 text-sm text-slate-500">{client.inn ? `ИНН ${client.inn}` : "ИНН не указан"}</div>
                         </div>
                       </div>
@@ -279,6 +280,9 @@ export function ClientsPage() {
                     <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
                       <span className="text-sm font-medium text-slate-500">{client.email ?? client.phone ?? "Контакты не указаны"}</span>
                       <div className="flex gap-2">
+                        <Link className="premium-button-ghost h-9 px-3" to={`/clients/${client.id}`}>
+                          Открыть
+                        </Link>
                         <button className="premium-button-ghost h-9 px-3" onClick={() => startEdit(client)}>
                           <Edit3 size={16} />
                         </button>

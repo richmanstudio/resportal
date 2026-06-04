@@ -139,11 +139,100 @@ export function LandingPage() {
         </div>
       </section>
 
+      <section className="mx-auto max-w-[1220px] px-5 pt-28">
+        <div className="grid gap-8 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
+          <div className="marketing-reveal overflow-hidden rounded-[34px] border border-slate-200 bg-white p-4 shadow-[0_26px_90px_rgba(11,39,68,0.12)]">
+            <div className="rounded-[26px] bg-slate-950 p-5 text-white">
+              <div className="grid gap-4 md:grid-cols-3">
+                <HeroMetric value="12" label="дел" />
+                <HeroMetric value="3" label="срока" />
+                <HeroMetric value="24" label="документа" />
+              </div>
+              <div className="mt-5 grid gap-4 lg:grid-cols-[1fr_0.8fr]">
+                <div className="rounded-[22px] bg-white p-5 text-[#0b2744]">
+                  <div className="text-sm font-bold text-slate-500">Карточка дела</div>
+                  <div className="mt-4 space-y-3">
+                    <HeroRow title="А40-1245/2026" meta="в работе" tone="blue" />
+                    <HeroRow title="Ходатайство к заседанию" meta="готов" tone="green" />
+                    <HeroRow title="Срок подачи позиции" meta="завтра" tone="urgent" />
+                  </div>
+                </div>
+                <div className="rounded-[22px] bg-white/10 p-5 ring-1 ring-white/10">
+                  <div className="text-sm font-bold text-blue-100">Безопасность</div>
+                  <div className="mt-4 space-y-3 text-sm font-semibold text-slate-200">
+                    <div>Роли и доступы</div>
+                    <div>Audit log действий</div>
+                    <div>Лимиты хранения</div>
+                    <div>Email-подтверждение</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="marketing-reveal marketing-delay-1">
+            <h2 className="text-[40px] font-bold leading-[1.08] tracking-[-0.03em] md:text-[58px]">Показываем продукт, а не обещания</h2>
+            <p className="mt-6 text-lg leading-8 text-slate-600">
+              Первый экран внутри сервиса сразу ведет к рабочему дню: дела, сроки, документы, задачи и ближайшие события. Это важно для покупки: юрист должен увидеть не “систему”, а порядок в практике.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section className="mx-auto max-w-[1220px] px-5 pt-28">
+        <div className="grid gap-5 md:grid-cols-3">
+          {[
+            ["Безопасность", "JWT-сессии, роли, audit log, лимиты загрузки и контролируемые типы документов."],
+            ["Оферта и политика", "Правовые документы доступны в публичном разделе и должны быть финально утверждены перед масштабной продажей."],
+            ["Поддержка", "Канал help@resportal.ru указан в интерфейсе и публичных страницах, чтобы пользователь понимал, куда обращаться."]
+          ].map(([title, text]) => (
+            <div key={title} className="marketing-reveal rounded-[28px] bg-white p-8 shadow-[0_20px_70px_rgba(11,39,68,0.08)]">
+              <ShieldCheck size={30} className="text-blue-600" />
+              <h3 className="mt-8 text-2xl font-bold text-[#0b2744]">{title}</h3>
+              <p className="mt-4 text-base leading-7 text-slate-600">{text}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="mx-auto max-w-[1220px] px-5 pt-28">
+        <div className="marketing-reveal rounded-[34px] bg-white p-6 shadow-[0_24px_90px_rgba(11,39,68,0.09)] ring-1 ring-slate-200/70 md:p-10">
+          <div className="grid gap-8 lg:grid-cols-[0.85fr_1.15fr] lg:items-start">
+            <div>
+              <div className="text-sm font-bold uppercase tracking-[0.16em] text-blue-700">Коммерческий смысл</div>
+              <h2 className="mt-4 text-[38px] font-bold leading-[1.08] tracking-[-0.03em] text-[#0b2744] md:text-[54px]">
+                Не терять дела, сроки и документы в таблицах, чатах и папках
+              </h2>
+              <p className="mt-5 text-lg leading-8 text-slate-600">
+                РЕСПОРТАЛ продает не “CRM”, а спокойный контроль юридической практики: что происходит сегодня, где ближайший срок и в каком деле лежит нужный документ.
+              </p>
+            </div>
+            <div className="overflow-hidden rounded-[26px] ring-1 ring-slate-200">
+              <div className="grid bg-[#0b2744] px-5 py-4 text-sm font-bold text-white md:grid-cols-3">
+                <div>Инструмент</div>
+                <div>Проблема</div>
+                <div>РЕСПОРТАЛ</div>
+              </div>
+              {[
+                ["Excel", "не напоминает о сроках и не хранит документы в контексте", "дело, срок, документ и клиент связаны"],
+                ["Notion", "нужно самому строить модель, права и шаблоны", "юридическая структура готова сразу"],
+                ["Обычная CRM", "заточена под продажи, а не судебную работу", "центр продукта — дело и процессуальный срок"]
+              ].map(([tool, problem, solution]) => (
+                <div key={tool} className="grid gap-3 border-t border-slate-100 px-5 py-4 text-sm leading-6 md:grid-cols-3">
+                  <div className="font-bold text-[#0b2744]">{tool}</div>
+                  <div className="text-slate-600">{problem}</div>
+                  <div className="font-semibold text-blue-700">{solution}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
       <section className="mx-auto max-w-[1220px] px-5 py-24">
         <div className="marketing-reveal rounded-[34px] bg-[#0b2744] px-6 py-14 text-center text-white md:px-16">
           <h2 className="text-[36px] font-bold tracking-[-0.02em] md:text-[50px]">Начните с бесплатной версии</h2>
           <p className="mx-auto mt-5 max-w-2xl text-lg leading-8 text-blue-100">
-            Создайте первые дела, проверьте контроль сроков и подключите подписку позже, когда будет готов биллинг.
+            Создайте первые дела, проверьте контроль сроков и оплатите тариф через YooKassa, когда бесплатных лимитов станет мало.
           </p>
           <div className="mt-9 flex flex-col justify-center gap-3 sm:flex-row">
             <Link to="/register" className="inline-flex rounded-[18px] bg-blue-600 px-10 py-5 text-lg font-semibold text-white shadow-[0_18px_42px_rgba(37,99,235,0.28)] transition duration-300 hover:-translate-y-1">Зарегистрироваться</Link>
@@ -184,7 +273,7 @@ function PrivacyNotice() {
           <Link to="/company/privacy" className="underline decoration-white/60 underline-offset-2 hover:decoration-white">
             правовых документах
           </Link>
-          .
+          . Также сайт использует Яндекс.Метрику для сбора статистики посещений и улучшения интерфейса.
         </div>
         <button
           className="shrink-0 rounded-lg bg-white px-4 py-2 text-xs font-semibold text-[#657993] shadow-sm transition hover:-translate-y-0.5 hover:bg-blue-50"

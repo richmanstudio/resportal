@@ -1,4 +1,50 @@
 services:
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    container_name: resportal-api
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      API_PORT: 4000
+      DATABASE_URL: postgresql://resportal:resportal@postgres:5432/resportal
+      REDIS_URL: redis://redis:6379
+      S3_ENDPOINT: http://minio:9000
+      S3_BUCKET: resportal-documents
+      S3_ACCESS_KEY: resportal
+      S3_SECRET_KEY: resportal-password
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      minio:
+        condition: service_started
+    volumes:
+      - api_storage:/app/storage
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:4000/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        VITE_API_URL: /api
+    container_name: resportal-web
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "80:80"
+    restart: unless-stopped
+
   postgres:
     image: postgres:16-alpine
     container_name: resportal-postgres
@@ -6,8 +52,6 @@ services:
       POSTGRES_USER: resportal
       POSTGRES_PASSWORD: resportal
       POSTGRES_DB: resportal
-    ports:
-      - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -19,8 +63,6 @@ services:
   redis:
     image: redis:7-alpine
     container_name: resportal-redis
-    ports:
-      - "6379:6379"
 
   minio:
     image: minio/minio:RELEASE.2025-04-22T22-12-26Z
@@ -29,12 +71,10 @@ services:
     environment:
       MINIO_ROOT_USER: resportal
       MINIO_ROOT_PASSWORD: resportal-password
-    ports:
-      - "9000:9000"
-      - "9001:9001"
     volumes:
       - minio_data:/data
 
 volumes:
+  api_storage:
   postgres_data:
   minio_data:

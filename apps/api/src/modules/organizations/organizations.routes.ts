@@ -1,6 +1,9 @@
 import { Router } from "express";
+import { createHash, randomBytes } from "node:crypto";
 import { memberInviteSchema, memberUpdateSchema, organizationCreateSchema } from "@resportal/shared";
 import { writeAuditLog } from "../../lib/audit";
+import { config } from "../../lib/config";
+import { sendEmail } from "../../lib/email";
 import { HttpError, parseBody } from "../../lib/http";
 import { prisma } from "../../lib/prisma";
 import { requireAuth } from "../../middleware/auth";
@@ -11,6 +14,14 @@ import { requireUserLimit } from "../../middleware/tariff-limits";
 export const organizationsRouter = Router();
 
 organizationsRouter.use(requireAuth);
+
+function createRawToken() {
+  return randomBytes(32).toString("base64url");
+}
+
+function hashToken(token: string) {
+  return createHash("sha256").update(token).digest("hex");
+}
 
 organizationsRouter.get("/", async (req, res, next) => {
   try {
@@ -89,45 +100,45 @@ organizationsRouter.post("/:organizationId/invite", requireOrganization, require
     }
 
     const input = parseBody(memberInviteSchema, req.body);
-    const user = await prisma.user.findUnique({ where: { email: input.email } });
+    const rawToken = createRawToken();
+    const organization = await prisma.organization.findUnique({ where: { id: req.organizationId } });
+    if (!organization) throw new HttpError(404, "Organization not found");
 
-    if (!user) {
-      throw new HttpError(404, "Пользователь с таким email еще не зарегистрирован. Попросите его сначала создать аккаунт.");
-    }
-
-    const member = await prisma.organizationMember.upsert({
-      where: {
-        organizationId_userId: {
-          organizationId: req.organizationId!,
-          userId: user.id
-        }
-      },
-      update: {
-        role: input.role,
-        status: "active",
-        invitedAt: new Date(),
-        joinedAt: new Date()
-      },
-      create: {
+    const invite = await prisma.organizationInvite.create({
+      data: {
         organizationId: req.organizationId!,
-        userId: user.id,
+        email: input.email,
+        fullName: input.fullName,
         role: input.role,
-        status: "active",
-        invitedAt: new Date(),
-        joinedAt: new Date()
-      },
-      include: { user: { select: { id: true, email: true, fullName: true } } }
+        tokenHash: hashToken(rawToken),
+        invitedById: req.user!.id,
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+      }
+    });
+
+    const url = `${config.appPublicUrl}/invite?token=${encodeURIComponent(rawToken)}`;
+    await sendEmail({
+      to: input.email,
+      subject: `Приглашение в ${organization.name} на РЕСПОРТАЛ`,
+      text: `${req.user!.fullName} приглашает вас в рабочее пространство "${organization.name}".\n\nПринять приглашение: ${url}\n\nСсылка действует 7 дней.`
     });
 
     await writeAuditLog({
       req,
-      entityType: "OrganizationMember",
-      entityId: member.id,
+      entityType: "OrganizationInvite",
+      entityId: invite.id,
       action: "organization.member.invite",
-      metadata: { invitedUserId: user.id, role: member.role, status: member.status }
+      metadata: { email: invite.email, role: invite.role, expiresAt: invite.expiresAt.toISOString() }
     });
 
-    res.status(201).json(member);
+    res.status(201).json({
+      id: invite.id,
+      email: invite.email,
+      fullName: invite.fullName,
+      role: invite.role,
+      status: "invited",
+      expiresAt: invite.expiresAt
+    });
   } catch (error) {
     next(error);
   }

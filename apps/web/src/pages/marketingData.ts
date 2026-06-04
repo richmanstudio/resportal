@@ -88,6 +88,8 @@ export const footerColumns: FooterColumnData[] = [
       { label: "Руководство", href: "/resources/docs" },
       { label: "Помощь", href: "/resources/help" },
       { label: "Вопросы и ответы", href: "/resources/faq" },
+      { label: "CRM для юристов", href: "/solutions/crm-dlya-yuristov" },
+      { label: "Учет судебных дел", href: "/solutions/uchet-sudebnyh-del" },
       { label: "Тарифы и ограничения", href: "/pricing" }
     ]
   },
@@ -101,6 +103,14 @@ export const footerColumns: FooterColumnData[] = [
       { label: "Правовые документы", href: "/company/privacy" }
     ]
   }
+];
+
+export const solutionLinks: Array<MarketingLink & { description: string }> = [
+  { label: "CRM для юристов", href: "/solutions/crm-dlya-yuristov", description: "Посадочная страница под запрос CRM для юристов." },
+  { label: "Учет судебных дел", href: "/solutions/uchet-sudebnyh-del", description: "Как вести судебные дела, документы, стороны и сроки в одной карточке." },
+  { label: "Процессуальные сроки", href: "/solutions/processualnye-sroki", description: "Контроль сроков, просрочки, ответственных и напоминаний." },
+  { label: "Программа для юриста", href: "/solutions/programma-dlya-yurista", description: "Рабочий кабинет для частного юриста без тяжелой корпоративной системы." },
+  { label: "CRM для юридической фирмы", href: "/solutions/crm-dlya-yuridicheskoy-firmy", description: "Единая база дел, ролей, документов и задач для юридической команды." }
 ];
 
 export const marketingPages: Record<string, MarketingPageData> = {

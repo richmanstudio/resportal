@@ -21,9 +21,10 @@ Errors use a stable envelope and keep the top-level `message` field for client c
 - `POST /auth/login` returns tokens for an existing user.
 - `POST /auth/refresh` rotates an access token from the refresh cookie or body token.
 - `POST /auth/password-reset/request` accepts `{ "email": "user@example.com" }` and returns a neutral accepted response.
-- `POST /auth/password-reset/confirm` validates reset payload shape. Full token persistence is reserved for the mail-provider integration.
+- `POST /auth/password-reset/confirm` accepts `{ "token": "...", "password": "new-password" }`, consumes a reset token and updates the password.
 - `POST /auth/email-verification/request` accepts an optional email and returns a neutral accepted response.
-- `POST /auth/email-verification/confirm` validates verification payload shape. Full token persistence is reserved for the mail-provider integration.
+- `POST /auth/email-verification/confirm` accepts `{ "token": "..." }`, consumes a verification token and marks the user email as verified.
+- `POST /auth/invites/accept` accepts `{ "token": "...", "password": "optional-for-new-users" }`, accepts an organization invite and returns tokens.
 - `POST /auth/logout` clears the refresh cookie.
 - `GET /auth/me` returns the authenticated user and memberships.
 - `PATCH /auth/me` updates the authenticated user's profile. Body supports `{ "fullName": "Name" }` and avatar upload via `{ "avatarBase64": "...", "avatarMimeType": "image/png" }` for PNG/JPEG/WebP images.
@@ -42,7 +43,7 @@ Errors use a stable envelope and keep the top-level `message` field for client c
 - `GET /organizations` returns organizations available to the current user.
 - `POST /organizations` creates a new organization owned by the current user.
 - `GET /organizations/:organizationId/members` returns members for the active organization. `:organizationId` must match `x-organization-id`.
-- `POST /organizations/:organizationId/invite` adds an already registered user to the active organization. `:organizationId` must match `x-organization-id`. If the email is not registered, the API returns `404`.
+- `POST /organizations/:organizationId/invite` creates a pending invite and sends an email link. `:organizationId` must match `x-organization-id`.
 - `PATCH /organizations/:organizationId/members/:memberId` updates a member role/status. Owners cannot be changed.
 - `DELETE /organizations/:organizationId/members/:memberId` removes a member from the organization. Owners cannot be removed.
 
@@ -53,7 +54,7 @@ Requires `Authorization: Bearer <token>` and `x-organization-id`.
 - `GET /clients`
 - `GET /clients?search=<text>&type=<individual|legal_entity|entrepreneur>`
 - `POST /clients`
-- `GET /clients/:id`
+- `GET /clients/:id` returns the full client card, including linked cases and documents.
 - `PATCH /clients/:id`
 - `DELETE /clients/:id`
 
@@ -82,6 +83,7 @@ Requires `Authorization: Bearer <token>` and `x-organization-id`.
 - `POST /deadlines`
 - `PATCH /deadlines/:id`
 - `PATCH /deadlines/:id/complete`
+- `POST /deadlines/reminders/send` sends email reminders for upcoming active/overdue deadlines. Body supports `{ "daysBefore": [0, 1, 3, 7] }`. Requires admin-level access.
 
 ## Tasks
 
@@ -104,6 +106,7 @@ Requires `Authorization: Bearer <token>` and `x-organization-id`.
 - `POST /documents/generate` creates a DOCX from a system template.
 - `PATCH /documents/:id` updates document metadata/status. Supported statuses: `draft`, `ready`, `signed`, `sent`. `active` is supported as a legacy status.
 - `GET /documents/:id/download` downloads the stored file.
+- `DELETE /documents/:id` deletes document metadata and the stored file. Requires admin-level access.
 
 ## Billing
 
@@ -112,6 +115,19 @@ Requires `Authorization: Bearer <token>` and `x-organization-id`.
 - `POST /billing/checkout` creates a YooKassa payment and returns a hosted payment URL.
 - `POST /billing/portal` is intentionally not enabled until recurring YooKassa payments are added.
 - `POST /webhooks/yookassa` accepts YooKassa `payment.succeeded` notifications and activates the paid plan for 30 days.
+
+Frontend purchase flow:
+
+- `/settings` shows plan cards. Paid plan buttons open `/settings/billing/:plan` first.
+- `/settings/billing/:plan` shows detailed plan information and creates the YooKassa payment only after the second confirmation button.
+- YooKassa must redirect users back to `BILLING_RETURN_URL`.
+
+YooKassa setup:
+
+- Required environment variables: `YOOKASSA_SHOP_ID`, `YOOKASSA_SECRET_KEY`, `BILLING_RETURN_URL`.
+- YooKassa HTTP notifications must be configured in the merchant cabinet for `payment.succeeded`.
+- Notification URL: `https://<your-domain>/api/webhooks/yookassa`.
+- Payment activation is verified by fetching the payment from YooKassa by payment id and reading trusted payment metadata.
 
 ## Members And Roles
 

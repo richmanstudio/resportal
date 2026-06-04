@@ -1,4 +1,4 @@
-import { BriefcaseBusiness, CalendarDays, Check, Clock, FileText, FolderKanban, Gavel, Play, Scale, TrendingUp, Users } from "lucide-react";
+import { BriefcaseBusiness, CalendarDays, Check, Clock, FileText, FolderKanban, Gavel, Play, Scale, TrendingUp, Users, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { Panel } from "../components/Panel";
@@ -32,12 +32,14 @@ function isSameLocalDate(value: string | undefined, date: Date) {
 
 export function DashboardPage() {
   const { workspace } = useWorkspace();
+  const onboardingDismissKey = `resportal.dashboard.onboarding.dismissed.${workspace.user.id}.${workspace.organizationId}`;
   const [cases, setCases] = useState<LegalCase[]>([]);
   const [deadlines, setDeadlines] = useState<Deadline[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [events, setEvents] = useState<Event[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [onboarding, setOnboarding] = useState<OnboardingSummary | null>(null);
+  const [isOnboardingHidden, setIsOnboardingHidden] = useState(() => localStorage.getItem(onboardingDismissKey) === "true");
   const [isLoading, setIsLoading] = useState(true);
   const [isDemoLoading, setIsDemoLoading] = useState(false);
 
@@ -68,6 +70,10 @@ export function DashboardPage() {
     void load();
   }, [workspace.organizationId]);
 
+  useEffect(() => {
+    setIsOnboardingHidden(localStorage.getItem(onboardingDismissKey) === "true");
+  }, [onboardingDismissKey]);
+
   const today = new Date();
   const todayLabel = today.toLocaleDateString("ru-RU", { weekday: "long", day: "numeric", month: "long" });
   const openTasks = tasks.filter((item) => item.status !== "done" && item.status !== "cancelled");
@@ -86,6 +92,11 @@ export function DashboardPage() {
   ];
   const onboardingDone = onboardingItems.filter((item) => item.done).length;
   const isDemoCreated = onboarding?.demoDataCreated ?? false;
+
+  function hideOnboarding() {
+    localStorage.setItem(onboardingDismissKey, "true");
+    setIsOnboardingHidden(true);
+  }
 
   async function createDemoData() {
     setIsDemoLoading(true);
@@ -127,7 +138,17 @@ export function DashboardPage() {
         description={`Сегодня ${todayLabel}. Ниже — дела, сроки и действия, которые требуют внимания.`}
       />
 
-      <section className="premium-panel overflow-hidden">
+      {!isOnboardingHidden ? (
+      <section className="premium-panel relative overflow-hidden">
+        <button
+          type="button"
+          className="absolute right-4 top-4 inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 shadow-sm transition hover:border-slate-300 hover:text-slate-950 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+          onClick={hideOnboarding}
+          aria-label="Скрыть первый запуск"
+          title="Скрыть"
+        >
+          <X size={16} />
+        </button>
         <div className="grid gap-5 p-5 lg:grid-cols-[1fr_auto] lg:items-center">
           <div>
             <div className="flex items-center gap-3">
@@ -159,6 +180,7 @@ export function DashboardPage() {
           ))}
         </div>
       </section>
+      ) : null}
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
         {metricCards.map((metric, index) => (

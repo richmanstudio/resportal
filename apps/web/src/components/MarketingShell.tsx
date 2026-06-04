@@ -2,8 +2,8 @@ import { ChevronDown, Menu, Search, X } from "lucide-react";
 import type React from "react";
 import { useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import logoUrl from "../../logo.png";
-import { featureLinks, footerColumns, marketingPages } from "../pages/marketingData";
+import logoUrl from "../assets/logo-app.png";
+import { featureLinks, footerColumns, marketingPages, solutionLinks } from "../pages/marketingData";
 
 type MarketingShellProps = {
   children: React.ReactNode;
@@ -38,7 +38,7 @@ export function MarketingHeader() {
       href,
       description: page.description
     }));
-    const allItems = [...baseItems, ...featureLinks, ...footerItems, ...pageItems];
+    const allItems = [...baseItems, ...featureLinks, ...solutionLinks, ...footerItems, ...pageItems];
     return Array.from(new Map(allItems.map((item) => [item.href, item])).values());
   }, []);
   const normalizedQuery = searchQuery.trim().toLowerCase();
@@ -119,7 +119,7 @@ export function MarketingHeader() {
               <Search size={23} />
             </button>
             <Link to="/login" onClick={(event) => navigateWithFade(event, "/login")} className="hidden text-[15px] font-semibold text-blue-700 transition hover:text-blue-900 md:block">Войти</Link>
-            <Link to="/register" onClick={(event) => navigateWithFade(event, "/register")} className="rounded-lg bg-blue-600 px-5 py-3 text-[15px] font-semibold text-white shadow-[0_14px_30px_rgba(37,99,235,0.22)] transition duration-300 hover:-translate-y-0.5 hover:bg-blue-700">Попробовать</Link>
+            <Link to="/register" onClick={(event) => navigateWithFade(event, "/register")} className="hidden rounded-lg bg-blue-600 px-5 py-3 text-[15px] font-semibold text-white shadow-[0_14px_30px_rgba(37,99,235,0.22)] transition duration-300 hover:-translate-y-0.5 hover:bg-blue-700 md:inline-flex">Попробовать</Link>
             <button className="lg:hidden" aria-label={isMenuOpen ? "Закрыть меню" : "Открыть меню"} onClick={() => setIsMenuOpen((current) => !current)} type="button">
               {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
             </button>

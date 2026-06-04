@@ -36,12 +36,17 @@ export function requireUserLimit(req: Request, _res: Response, next: NextFunctio
     const organization = await prisma.organization.findUnique({ where: { id: req.organizationId } });
     if (!organization) throw new HttpError(404, "Organization not found");
 
-    const members = await prisma.organizationMember.count({
-      where: { organizationId: req.organizationId, status: { in: ["active", "invited"] } }
-    });
+    const [members, pendingInvites] = await Promise.all([
+      prisma.organizationMember.count({
+        where: { organizationId: req.organizationId, status: { in: ["active", "invited"] } }
+      }),
+      prisma.organizationInvite.count({
+        where: { organizationId: req.organizationId, acceptedAt: null, expiresAt: { gt: new Date() } }
+      })
+    ]);
     const effectiveUsersLimit = hasPaidTariff(organization) ? organization.usersLimit : freeLimits.usersLimit;
 
-    if (members >= effectiveUsersLimit) {
+    if (members + pendingInvites >= effectiveUsersLimit) {
       throw new HttpError(402, "Лимит пользователей бесплатной версии исчерпан. Перейдите на Team или Firm.");
     }
     next();

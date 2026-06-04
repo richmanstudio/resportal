@@ -1,5 +1,6 @@
 import { Activity, Building2, CreditCard, KeyRound, MailCheck, Plus, ShieldCheck, UserPlus, Users } from "lucide-react";
 import { FormEvent, useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { Panel } from "../components/Panel";
 import { Badge, IconTile, PageHeader } from "../components/Premium";
 import { Toast } from "../components/Toast";
@@ -12,7 +13,8 @@ type Subscription = { tariffPlan: string; tariffStatus: string; tariffCurrentPer
 type AuditLog = { id: string; action: string; entityType: string; createdAt: string; user?: { fullName: string; email: string } };
 
 function hasPaidSubscription(subscription: Subscription | null) {
-  return subscription?.tariffStatus === "active" && Boolean(subscription.tariffCurrentPeriodEnd);
+  const currentPeriodEnd = subscription?.tariffCurrentPeriodEnd;
+  return subscription?.tariffStatus === "active" && currentPeriodEnd ? new Date(currentPeriodEnd) > new Date() : false;
 }
 
 function canViewAudit(role: string) {
@@ -27,7 +29,6 @@ export function SettingsPage() {
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
-  const [busyPlan, setBusyPlan] = useState("");
 
   async function load() {
     const organizationId = workspace.organizationId;
@@ -74,7 +75,7 @@ export function SettingsPage() {
         body: JSON.stringify({ email: form.get("email"), fullName: form.get("fullName"), role: form.get("role") })
       });
       event.currentTarget.reset();
-      setMessage("Сотрудник добавлен в организацию");
+      setMessage("Приглашение отправлено на email сотрудника");
       await load();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Не удалось пригласить сотрудника");
@@ -108,37 +109,6 @@ export function SettingsPage() {
       await load();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Не удалось удалить сотрудника");
-    }
-  }
-
-  async function subscribe(plan: Exclude<Plan["plan"], "free">) {
-    setBusyPlan(plan);
-    setError("");
-    try {
-      const result = await apiFetch<{ url: string }>("/billing/checkout", {
-        method: "POST",
-        organizationId: workspace.organizationId,
-        body: JSON.stringify({ plan })
-      });
-      window.location.href = result.url;
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Не удалось открыть оплату");
-    } finally {
-      setBusyPlan("");
-    }
-  }
-
-  async function openPortal() {
-    setError("");
-    try {
-      const result = await apiFetch<{ url: string }>("/billing/portal", {
-        method: "POST",
-        organizationId: workspace.organizationId,
-        body: "{}"
-      });
-      window.location.href = result.url;
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Не удалось открыть управление подпиской");
     }
   }
 
@@ -206,8 +176,8 @@ export function SettingsPage() {
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <div className="text-lg font-semibold">{plan.title}</div>
-                  <div className="mt-1 text-3xl font-semibold text-slate-950">{plan.price === 0 ? "0 ₽" : `${plan.price.toLocaleString("ru-RU")} ₽`}</div>
-                  <div className="text-sm font-medium text-slate-500">{plan.price === 0 ? "навсегда" : "в месяц"}</div>
+            <div className="mt-1 text-3xl font-semibold text-slate-950">{plan.price === 0 ? "0 ₽" : `${plan.price.toLocaleString("ru-RU")} ₽`}</div>
+            <div className="text-sm font-medium text-slate-500">{plan.price === 0 ? "навсегда" : "за 30 дней доступа"}</div>
                 </div>
                 {(plan.plan === "free" && !hasPaidSubscription(subscription)) || (hasPaidSubscription(subscription) && subscription?.tariffPlan === plan.plan) ? <Badge tone="green">Текущий</Badge> : null}
               </div>
@@ -223,24 +193,28 @@ export function SettingsPage() {
               {plan.plan === "free" ? (
                 <div className="mt-5 rounded-2xl bg-slate-50 px-4 py-3 text-center text-sm font-semibold text-slate-500">Доступна без оплаты</div>
               ) : (
-                <button
-                  className="premium-button-blue mt-5 w-full disabled:cursor-not-allowed disabled:bg-slate-300"
-                  disabled={busyPlan === plan.plan}
-                  onClick={() => void subscribe(plan.plan as Exclude<Plan["plan"], "free">)}
+                <Link
+                  className="premium-button-blue mt-5 w-full"
+                  to={`/settings/billing/${plan.plan}`}
                 >
-                  {busyPlan === plan.plan ? "Открываем оплату..." : "Купить подписку"}
-                </button>
+                  Купить подписку
+                </Link>
               )}
             </div>
           ))}
         </div>
         <div className="border-t border-slate-100 px-6 py-4">
-          <button className="premium-button-ghost" onClick={() => void openPortal()}>
-            Управлять рекуррентными платежами
-          </button>
-          <span className="ml-3 text-sm text-slate-500">
-            {hasPaidSubscription(subscription) ? `Статус: ${subscription?.tariffStatus}` : "Сейчас вы в бесплатной урезанной версии"} {subscription?.paymentProvider ? `• ${subscription.paymentProvider}` : ""}
-          </span>
+          <div className="text-sm leading-6 text-slate-500">
+            Оплата сейчас работает как разовый платеж YooKassa за 30 дней доступа. Рекуррентное управление появится после отдельного подключения автосписаний.
+          </div>
+          <div className="mt-3 flex flex-wrap items-center gap-3">
+            <button className="premium-button-ghost opacity-60" disabled>
+              Управление автосписаниями пока недоступно
+            </button>
+            <span className="text-sm text-slate-500">
+              {hasPaidSubscription(subscription) ? `Статус: ${subscription?.tariffStatus}` : "Сейчас вы в бесплатной урезанной версии"} {subscription?.paymentProvider ? `• ${subscription.paymentProvider}` : ""}
+            </span>
+          </div>
         </div>
       </Panel>
 
@@ -297,7 +271,7 @@ export function SettingsPage() {
 
       <Panel title="Пригласить сотрудника">
         <div className="border-b border-slate-100 px-6 py-4 text-sm text-slate-500">
-          Добавить можно только пользователя, который уже зарегистрирован в РЕСПОРТАЛ.
+          Мы отправим сотруднику ссылку. Если аккаунта еще нет, он задаст пароль при первом входе.
         </div>
         <form className="grid gap-3 p-6 md:grid-cols-[1fr_1fr_160px_auto]" onSubmit={invite}>
           <input required name="fullName" placeholder="ФИО" className="premium-input" />

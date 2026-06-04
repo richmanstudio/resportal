@@ -13,7 +13,7 @@ const plans = [
   },
   {
     name: "Solo",
-    price: "по подписке",
+    price: "990 ₽",
     description: "Для частного юриста, который ведет личную практику.",
     limit: "личная практика",
     features: ["Больше дел и документов", "Контроль сроков", "Личный дашборд", "Профиль и настройки"],
@@ -21,7 +21,7 @@ const plans = [
   },
   {
     name: "Team",
-    price: "по подписке",
+    price: "3 990 ₽",
     description: "Самый частый выбор для небольшой юридической команды.",
     limit: "команда",
     features: ["Несколько участников", "Роли и доступы", "Командные задачи", "Нагрузка и контроль"],
@@ -29,7 +29,7 @@ const plans = [
   },
   {
     name: "Firm",
-    price: "по подписке",
+    price: "7 990 ₽",
     description: "Для юридической фирмы с единым стандартом работы.",
     limit: "фирма",
     features: ["Расширенная команда", "Больше рабочих данных", "Процессы фирмы", "Приоритетная поддержка"],
@@ -44,7 +44,7 @@ export function PricingPage() {
         <div className="marketing-reveal mx-auto max-w-4xl">
           <h1 className="text-[48px] font-bold leading-[1.05] tracking-[-0.03em] md:text-[74px]">Тарифы РЕСПОРТАЛА</h1>
           <p className="mx-auto mt-7 max-w-3xl text-xl leading-8 text-slate-600">
-            Сейчас пользователь начинает с бесплатной версии. Платные подписки будут подключены после финальной интеграции биллинга.
+            Начните бесплатно, а когда рабочий сценарий подтвердится, оплатите нужный тариф через YooKassa на 30 дней доступа.
           </p>
         </div>
       </section>
@@ -62,6 +62,9 @@ export function PricingPage() {
               <h2 className="text-3xl font-bold">{plan.name}</h2>
               <div className={`mt-3 w-fit rounded-full px-3 py-1 text-xs font-bold uppercase tracking-[0.12em] ${plan.highlight ? "bg-white/10 text-blue-100" : "bg-blue-50 text-blue-700"}`}>{plan.limit}</div>
               <div className={`mt-6 text-2xl font-bold ${plan.highlight ? "text-blue-100" : "text-blue-700"}`}>{plan.price}</div>
+              <div className={`mt-1 text-sm font-semibold ${plan.highlight ? "text-blue-100" : "text-slate-500"}`}>
+                {plan.name === "Free" ? "без оплаты" : "за 30 дней доступа"}
+              </div>
               <p className={`mt-4 min-h-[104px] text-[15px] leading-7 ${plan.highlight ? "text-blue-100" : "text-slate-600"}`}>{plan.description}</p>
               <div className="mt-7 space-y-3">
                 {plan.features.map((feature) => (
@@ -79,9 +82,9 @@ export function PricingPage() {
         </div>
 
         <div className="marketing-reveal mt-10 rounded-[34px] bg-[#c9e3ff] p-8 md:p-12">
-          <h2 className="text-[34px] font-bold leading-tight md:text-[46px]">Почему пока без оплаты?</h2>
+          <h2 className="text-[34px] font-bold leading-tight md:text-[46px]">Честная модель оплаты на MVP</h2>
           <p className="mt-5 max-w-3xl text-lg leading-8 text-[#173a5e]">
-            Подключение платежного провайдера требует отдельной проверки и аккуратной реализации платежного сценария. Поэтому тарифная логика уже описана в продукте, но оплату лучше включать после готовности биллинга.
+            Сейчас это не автосписание, а разовый платеж на 30 дней. Так проще контролировать доступ, поддержку и юридические обязательства на раннем этапе продукта.
           </p>
         </div>
       </section>

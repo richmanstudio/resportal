@@ -24,7 +24,8 @@ export function limitsForPlan(plan: TariffPlan) {
 }
 
 export function hasPaidTariff(input: { tariffStatus: string; tariffCurrentPeriodEnd: Date | null }) {
-  return input.tariffStatus === "active" && Boolean(input.tariffCurrentPeriodEnd);
+  const currentPeriodEnd = input.tariffCurrentPeriodEnd;
+  return input.tariffStatus === "active" && currentPeriodEnd ? currentPeriodEnd > new Date() : false;
 }
 
 export function storageLimitFor(input: { tariffStatus: string; tariffCurrentPeriodEnd: Date | null; storageLimit: number }) {

@@ -32,6 +32,11 @@ export const emailVerificationSchema = z.object({
   token: z.string().min(16).max(512)
 });
 
+export const inviteAcceptSchema = z.object({
+  token: z.string().min(16).max(512),
+  password: passwordSchema.optional()
+});
+
 export const userProfileUpdateSchema = z.object({
   fullName: z.string().min(2).max(160).optional(),
   avatarUrl: z.string().url().max(1000).optional().or(z.literal("")),
@@ -125,6 +130,10 @@ export const deadlineListQuerySchema = z.object({
   status: z.enum(["active", "completed", "overdue", "cancelled"]).optional(),
   caseId: z.string().uuid().optional(),
   due: z.enum(["overdue", "today", "week"]).optional()
+});
+
+export const deadlineReminderSendSchema = z.object({
+  daysBefore: z.array(z.coerce.number().int().min(0).max(30)).default([0, 1, 3, 7])
 });
 
 export const taskCreateSchema = z.object({
@@ -221,6 +230,7 @@ export type PasswordResetRequestInput = z.infer<typeof passwordResetRequestSchem
 export type PasswordResetInput = z.infer<typeof passwordResetSchema>;
 export type EmailVerificationRequestInput = z.infer<typeof emailVerificationRequestSchema>;
 export type EmailVerificationInput = z.infer<typeof emailVerificationSchema>;
+export type InviteAcceptInput = z.infer<typeof inviteAcceptSchema>;
 export type UserProfileUpdateInput = z.infer<typeof userProfileUpdateSchema>;
 export type OrganizationCreateInput = z.infer<typeof organizationCreateSchema>;
 export type ClientCreateInput = z.infer<typeof clientCreateSchema>;
@@ -231,6 +241,7 @@ export type CasePartyCreateInput = z.infer<typeof casePartyCreateSchema>;
 export type CasePartyUpdateInput = z.infer<typeof casePartyUpdateSchema>;
 export type DeadlineCreateInput = z.infer<typeof deadlineCreateSchema>;
 export type DeadlineUpdateInput = z.infer<typeof deadlineUpdateSchema>;
+export type DeadlineReminderSendInput = z.infer<typeof deadlineReminderSendSchema>;
 export type DeadlineListQuery = z.infer<typeof deadlineListQuerySchema>;
 export type TaskCreateInput = z.infer<typeof taskCreateSchema>;
 export type TaskUpdateInput = z.infer<typeof taskUpdateSchema>;

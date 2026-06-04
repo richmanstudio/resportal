@@ -5,8 +5,8 @@ import { useForm } from "react-hook-form";
 import { Link, useNavigate } from "react-router-dom";
 import { loginSchema, registerSchema, type LoginInput, type RegisterInput } from "@resportal/shared";
 import { apiFetch, setSession } from "../lib/api";
-import logoUrl from "../../logo.png";
-import loginBgUrl from "../../loginbg.png";
+import loginBgUrl from "../assets/loginbg-app.jpg";
+import logoUrl from "../assets/logo-app.png";
 
 type AuthPageProps = {
   mode: "login" | "register";

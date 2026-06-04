@@ -1,6 +1,7 @@
 import { Router } from "express";
-import { deadlineCreateSchema, deadlineListQuerySchema, deadlineUpdateSchema } from "@resportal/shared";
+import { deadlineCreateSchema, deadlineListQuerySchema, deadlineReminderSendSchema, deadlineUpdateSchema } from "@resportal/shared";
 import { writeAuditLog } from "../../lib/audit";
+import { sendEmail } from "../../lib/email";
 import { notFound, parseBody } from "../../lib/http";
 import { prisma } from "../../lib/prisma";
 import { requireAuth } from "../../middleware/auth";
@@ -67,6 +68,57 @@ deadlinesRouter.post("/", requireActiveTariff, requireAtLeastRole("assistant"), 
       metadata: { caseId: deadline.caseId, priority: deadline.priority }
     });
     res.status(201).json(deadline);
+  } catch (error) {
+    next(error);
+  }
+});
+
+deadlinesRouter.post("/reminders/send", requireAtLeastRole("admin"), async (req, res, next) => {
+  try {
+    const input = parseBody(deadlineReminderSendSchema, req.body ?? {});
+    const now = new Date();
+    const daysBefore = input.daysBefore ?? [0, 1, 3, 7];
+    const targets = daysBefore.map((days) => {
+      const start = new Date(now);
+      start.setDate(start.getDate() + days);
+      start.setHours(0, 0, 0, 0);
+      const end = new Date(start);
+      end.setHours(23, 59, 59, 999);
+      return { days, start, end };
+    });
+
+    const deadlines = await prisma.deadline.findMany({
+      where: {
+        organizationId: req.organizationId,
+        status: { in: ["active", "overdue"] },
+        OR: targets.map((target) => ({ deadlineAt: { gte: target.start, lte: target.end } }))
+      },
+      include: {
+        case: { select: { title: true, caseNumber: true } },
+        responsibleUser: { select: { email: true, fullName: true } },
+        organization: { select: { owner: { select: { email: true, fullName: true } } } }
+      },
+      orderBy: { deadlineAt: "asc" }
+    });
+
+    await Promise.all(deadlines.map((deadline) => {
+      const recipient = deadline.responsibleUser ?? deadline.organization.owner;
+      const caseTitle = deadline.case.caseNumber ?? deadline.case.title;
+      return sendEmail({
+        to: recipient.email,
+        subject: `Напоминание о сроке: ${deadline.title}`,
+        text: `Срок: ${deadline.title}\nДело: ${caseTitle}\nДата: ${deadline.deadlineAt.toLocaleDateString("ru-RU")}\n\nПроверьте карточку дела в РЕСПОРТАЛЕ.`
+      });
+    }));
+
+    await writeAuditLog({
+      req,
+      entityType: "Deadline",
+      action: "deadline.reminders.send",
+      metadata: { sent: deadlines.length, daysBefore }
+    });
+
+    res.json({ sent: deadlines.length });
   } catch (error) {
     next(error);
   }

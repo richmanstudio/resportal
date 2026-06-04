@@ -24,13 +24,19 @@ const envSchema = z
     JWT_REFRESH_SECRET: z.string().min(16).default("dev-refresh-secret"),
     ACCESS_TOKEN_TTL: z.string().min(1).default("15m"),
     REFRESH_TOKEN_TTL: z.string().min(1).default("30d"),
+    AUTH_COOKIE_SECURE: z.coerce.boolean().optional(),
     S3_ENDPOINT: z.string().url().optional(),
     S3_ACCESS_KEY: z.string().optional(),
     S3_SECRET_KEY: z.string().optional(),
     S3_BUCKET: z.string().optional(),
     YOOKASSA_SHOP_ID: z.string().optional(),
     YOOKASSA_SECRET_KEY: z.string().optional(),
-    BILLING_RETURN_URL: z.string().url().default("http://localhost:5173/settings?billing=return")
+    BILLING_RETURN_URL: z.string().url().default("http://localhost:5173/settings?billing=return"),
+    APP_PUBLIC_URL: z.string().url().default("http://localhost:5173"),
+    EMAIL_MODE: z.enum(["console", "webhook"]).default("console"),
+    EMAIL_FROM: z.string().email().default("support@resportal.ru"),
+    EMAIL_WEBHOOK_URL: z.string().url().optional(),
+    DOCUMENT_MAX_UPLOAD_MB: z.coerce.number().positive().default(25)
   })
   .superRefine((env, ctx) => {
     if (env.NODE_ENV !== "production") return;
@@ -72,11 +78,17 @@ export const config = {
   refreshSecret: env.JWT_REFRESH_SECRET,
   accessTtl: env.ACCESS_TOKEN_TTL,
   refreshTtl: env.REFRESH_TOKEN_TTL,
+  authCookieSecure: env.AUTH_COOKIE_SECURE ?? env.NODE_ENV === "production",
   s3Endpoint: env.S3_ENDPOINT,
   s3AccessKey: env.S3_ACCESS_KEY,
   s3SecretKey: env.S3_SECRET_KEY,
   s3Bucket: env.S3_BUCKET,
   yookassaShopId: env.YOOKASSA_SHOP_ID,
   yookassaSecretKey: env.YOOKASSA_SECRET_KEY,
-  billingReturnUrl: env.BILLING_RETURN_URL
+  billingReturnUrl: env.BILLING_RETURN_URL,
+  appPublicUrl: env.APP_PUBLIC_URL,
+  emailMode: env.EMAIL_MODE,
+  emailFrom: env.EMAIL_FROM,
+  emailWebhookUrl: env.EMAIL_WEBHOOK_URL,
+  documentMaxUploadMb: env.DOCUMENT_MAX_UPLOAD_MB
 };

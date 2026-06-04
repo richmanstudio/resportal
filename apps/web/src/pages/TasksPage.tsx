@@ -106,7 +106,8 @@ export function TasksPage() {
   async function saveTask(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
-    const form = new FormData(event.currentTarget);
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
     const input = taskCreateSchema.parse({
       title: form.get("title"),
       caseId: optional(form.get("caseId")),
@@ -122,7 +123,7 @@ export function TasksPage() {
         organizationId: workspace.organizationId,
         body: JSON.stringify(input)
       });
-      event.currentTarget.reset();
+      formElement.reset();
       setEditingTask(null);
       setMessage(editingTask ? "Задача обновлена" : "Задача создана");
       await load();
@@ -134,7 +135,8 @@ export function TasksPage() {
   async function saveDeadline(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
-    const form = new FormData(event.currentTarget);
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
     const input = deadlineCreateSchema.parse({
       title: form.get("title"),
       caseId: form.get("caseId"),
@@ -151,7 +153,7 @@ export function TasksPage() {
         organizationId: workspace.organizationId,
         body: JSON.stringify(input)
       });
-      event.currentTarget.reset();
+      formElement.reset();
       setEditingDeadline(null);
       setMessage(editingDeadline ? "Срок обновлен" : "Срок создан");
       await load();
