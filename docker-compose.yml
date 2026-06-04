@@ -41,8 +41,23 @@ services:
     depends_on:
       api:
         condition: service_healthy
+    restart: unless-stopped
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: resportal-caddy
+    depends_on:
+      web:
+        condition: service_started
+      api:
+        condition: service_healthy
     ports:
       - "80:80"
+      - "443:443"
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
     restart: unless-stopped
 
   postgres:
@@ -76,5 +91,7 @@ services:
 
 volumes:
   api_storage:
+  caddy_data:
+  caddy_config:
   postgres_data:
   minio_data:
