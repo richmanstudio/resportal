@@ -125,8 +125,10 @@ Frontend purchase flow:
 YooKassa setup:
 
 - Required environment variables: `YOOKASSA_SHOP_ID`, `YOOKASSA_SECRET_KEY`, `BILLING_RETURN_URL`.
+- YooKassa Basic Auth requires both the shop identifier and the secret key. `YOOKASSA_SECRET_KEY` alone is not enough for live API requests.
 - YooKassa HTTP notifications must be configured in the merchant cabinet for `payment.succeeded`.
-- Notification URL: `https://<your-domain>/api/webhooks/yookassa`.
+- Production notification URL: `https://респортал.рф/api/webhooks/yookassa` (`https://xn--80ajtkeedfm.xn--p1ai/api/webhooks/yookassa`).
+- Production return URL: `https://респортал.рф/settings?billing=return` (`https://xn--80ajtkeedfm.xn--p1ai/settings?billing=return`).
 - Payment activation is verified by fetching the payment from YooKassa by payment id and reading trusted payment metadata.
 
 ## Members And Roles

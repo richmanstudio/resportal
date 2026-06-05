@@ -13,11 +13,15 @@ const weakSecretValues = new Set([
   "dev-refresh-secret"
 ]);
 
+const emptyStringToUndefined = (value: unknown) => (value === "" ? undefined : value);
+const optionalUrl = z.preprocess(emptyStringToUndefined, z.string().url().optional());
+const optionalString = z.preprocess(emptyStringToUndefined, z.string().min(1).optional());
+
 const envSchema = z
   .object({
     NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
     DATABASE_URL: z.string().min(1, "DATABASE_URL is required"),
-    REDIS_URL: z.string().url().optional(),
+    REDIS_URL: optionalUrl,
     API_PORT: z.coerce.number().int().positive().default(4000),
     WEB_ORIGIN: z.string().url().default("http://localhost:5173"),
     JWT_ACCESS_SECRET: z.string().min(16).default("dev-access-secret"),
@@ -25,17 +29,17 @@ const envSchema = z
     ACCESS_TOKEN_TTL: z.string().min(1).default("15m"),
     REFRESH_TOKEN_TTL: z.string().min(1).default("30d"),
     AUTH_COOKIE_SECURE: z.coerce.boolean().optional(),
-    S3_ENDPOINT: z.string().url().optional(),
-    S3_ACCESS_KEY: z.string().optional(),
-    S3_SECRET_KEY: z.string().optional(),
-    S3_BUCKET: z.string().optional(),
-    YOOKASSA_SHOP_ID: z.string().optional(),
-    YOOKASSA_SECRET_KEY: z.string().optional(),
+    S3_ENDPOINT: optionalUrl,
+    S3_ACCESS_KEY: optionalString,
+    S3_SECRET_KEY: optionalString,
+    S3_BUCKET: optionalString,
+    YOOKASSA_SHOP_ID: optionalString,
+    YOOKASSA_SECRET_KEY: optionalString,
     BILLING_RETURN_URL: z.string().url().default("http://localhost:5173/settings?billing=return"),
     APP_PUBLIC_URL: z.string().url().default("http://localhost:5173"),
     EMAIL_MODE: z.enum(["console", "webhook"]).default("console"),
     EMAIL_FROM: z.string().email().default("support@resportal.ru"),
-    EMAIL_WEBHOOK_URL: z.string().url().optional(),
+    EMAIL_WEBHOOK_URL: optionalUrl,
     DOCUMENT_MAX_UPLOAD_MB: z.coerce.number().positive().default(25)
   })
   .superRefine((env, ctx) => {
