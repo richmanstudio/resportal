@@ -75,10 +75,10 @@ export function SettingsPage() {
         body: JSON.stringify({ email: form.get("email"), fullName: form.get("fullName"), role: form.get("role") })
       });
       event.currentTarget.reset();
-      setMessage("Приглашение отправлено на email сотрудника");
+      setMessage("Сотрудник добавлен в организацию");
       await load();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Не удалось пригласить сотрудника");
+      setError(e instanceof Error ? e.message : "Не удалось добавить сотрудника");
     }
   }
 
@@ -269,9 +269,9 @@ export function SettingsPage() {
         </form>
       </Panel>
 
-      <Panel title="Пригласить сотрудника">
+      <Panel title="Добавить сотрудника">
         <div className="border-b border-slate-100 px-6 py-4 text-sm text-slate-500">
-          Мы отправим сотруднику ссылку. Если аккаунта еще нет, он задаст пароль при первом входе.
+          Укажите email и ФИО уже зарегистрированного пользователя. Если данные совпадут с аккаунтом, сотрудник сразу появится в организации.
         </div>
         <form className="grid gap-3 p-6 md:grid-cols-[1fr_1fr_160px_auto]" onSubmit={invite}>
           <input required name="fullName" placeholder="ФИО" className="premium-input" />
@@ -279,7 +279,7 @@ export function SettingsPage() {
           <select name="role" className="premium-select">
             <option value="lawyer">Юрист</option><option value="assistant">Помощник</option><option value="viewer">Наблюдатель</option><option value="admin">Админ</option>
           </select>
-          <button className="premium-button"><UserPlus size={18} /> Пригласить</button>
+          <button className="premium-button"><UserPlus size={18} /> Добавить</button>
         </form>
       </Panel>
 

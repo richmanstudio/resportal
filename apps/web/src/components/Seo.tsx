@@ -9,7 +9,7 @@ type SeoEntry = {
   keywords: string;
 };
 
-const siteUrl = "https://resportal.ru";
+const siteUrl = "https://xn--80ajtkeedfm.xn--p1ai";
 const defaultSeo: SeoEntry = {
   title: "РЕСПОРТАЛ — CRM для юристов, учет дел, сроков, клиентов и документов",
   description: "LegalTech CRM для частных юристов и юридических команд: реестр дел, процессуальные сроки, задачи, клиенты, документы, календарь, роли и контроль доступа.",

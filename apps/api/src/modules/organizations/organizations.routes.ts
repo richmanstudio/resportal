@@ -1,9 +1,6 @@
 import { Router } from "express";
-import { createHash, randomBytes } from "node:crypto";
 import { memberInviteSchema, memberUpdateSchema, organizationCreateSchema } from "@resportal/shared";
 import { writeAuditLog } from "../../lib/audit";
-import { config } from "../../lib/config";
-import { sendEmail } from "../../lib/email";
 import { HttpError, parseBody } from "../../lib/http";
 import { prisma } from "../../lib/prisma";
 import { requireAuth } from "../../middleware/auth";
@@ -15,12 +12,8 @@ export const organizationsRouter = Router();
 
 organizationsRouter.use(requireAuth);
 
-function createRawToken() {
-  return randomBytes(32).toString("base64url");
-}
-
-function hashToken(token: string) {
-  return createHash("sha256").update(token).digest("hex");
+function normalizePersonName(value: string) {
+  return value.trim().replace(/\s+/g, " ").toLocaleLowerCase("ru-RU");
 }
 
 organizationsRouter.get("/", async (req, res, next) => {
@@ -100,45 +93,52 @@ organizationsRouter.post("/:organizationId/invite", requireOrganization, require
     }
 
     const input = parseBody(memberInviteSchema, req.body);
-    const rawToken = createRawToken();
-    const organization = await prisma.organization.findUnique({ where: { id: req.organizationId } });
-    if (!organization) throw new HttpError(404, "Organization not found");
-
-    const invite = await prisma.organizationInvite.create({
-      data: {
-        organizationId: req.organizationId!,
-        email: input.email,
-        fullName: input.fullName,
-        role: input.role,
-        tokenHash: hashToken(rawToken),
-        invitedById: req.user!.id,
-        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
-      }
+    const user = await prisma.user.findUnique({
+      where: { email: input.email },
+      select: { id: true, email: true, fullName: true, status: true }
     });
 
-    const url = `${config.appPublicUrl}/invite?token=${encodeURIComponent(rawToken)}`;
-    await sendEmail({
-      to: input.email,
-      subject: `Приглашение в ${organization.name} на РЕСПОРТАЛ`,
-      text: `${req.user!.fullName} приглашает вас в рабочее пространство "${organization.name}".\n\nПринять приглашение: ${url}\n\nСсылка действует 7 дней.`
+    if (!user) {
+      throw new HttpError(404, "Пользователь с такой почтой не зарегистрирован. Сначала он должен создать аккаунт в РЕСПОРТАЛЕ.");
+    }
+
+    if (user.status !== "active") {
+      throw new HttpError(409, "Этот пользователь заблокирован и не может быть добавлен в организацию.");
+    }
+
+    if (normalizePersonName(user.fullName) !== normalizePersonName(input.fullName)) {
+      throw new HttpError(409, "ФИО не совпадает с зарегистрированным аккаунтом. Проверьте написание ФИО в профиле пользователя.");
+    }
+
+    const existingMember = await prisma.organizationMember.findUnique({
+      where: { organizationId_userId: { organizationId: req.organizationId!, userId: user.id } }
+    });
+
+    if (existingMember) {
+      throw new HttpError(409, "Этот пользователь уже состоит в организации.");
+    }
+
+    const member = await prisma.organizationMember.create({
+      data: {
+        organizationId: req.organizationId!,
+        userId: user.id,
+        role: input.role,
+        status: "active",
+        invitedAt: new Date(),
+        joinedAt: new Date()
+      },
+      include: { user: { select: { id: true, email: true, fullName: true, status: true } } }
     });
 
     await writeAuditLog({
       req,
-      entityType: "OrganizationInvite",
-      entityId: invite.id,
+      entityType: "OrganizationMember",
+      entityId: member.id,
       action: "organization.member.invite",
-      metadata: { email: invite.email, role: invite.role, expiresAt: invite.expiresAt.toISOString() }
+      metadata: { email: user.email, role: member.role, addedUserId: user.id }
     });
 
-    res.status(201).json({
-      id: invite.id,
-      email: invite.email,
-      fullName: invite.fullName,
-      role: invite.role,
-      status: "invited",
-      expiresAt: invite.expiresAt
-    });
+    res.status(201).json(member);
   } catch (error) {
     next(error);
   }

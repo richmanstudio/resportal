@@ -43,7 +43,7 @@ Errors use a stable envelope and keep the top-level `message` field for client c
 - `GET /organizations` returns organizations available to the current user.
 - `POST /organizations` creates a new organization owned by the current user.
 - `GET /organizations/:organizationId/members` returns members for the active organization. `:organizationId` must match `x-organization-id`.
-- `POST /organizations/:organizationId/invite` creates a pending invite and sends an email link. `:organizationId` must match `x-organization-id`.
+- `POST /organizations/:organizationId/invite` accepts `{ "email": "user@example.com", "fullName": "User Name", "role": "lawyer" }`, verifies that a registered active user with the same email and full name exists, and immediately adds that user to the organization. `:organizationId` must match `x-organization-id`.
 - `PATCH /organizations/:organizationId/members/:memberId` updates a member role/status. Owners cannot be changed.
 - `DELETE /organizations/:organizationId/members/:memberId` removes a member from the organization. Owners cannot be removed.
 
